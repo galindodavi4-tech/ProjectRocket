@@ -9,8 +9,20 @@ function errorMessage(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) return "Chave da API inválida. Confira o ANTHROPIC_API_KEY.";
   if (err instanceof Anthropic.RateLimitError) return "Muitas requisições agora. Tente de novo em alguns segundos.";
   if (err instanceof Anthropic.APIConnectionError) return "Não consegui falar com a API da Anthropic.";
-  if (err instanceof Anthropic.APIError) return `Erro da API (${err.status ?? "?"}). Tente de novo.`;
+  if (err instanceof Anthropic.APIError) {
+    const detail = apiErrorDetail(err);
+    if (/credit balance/i.test(detail)) {
+      return "Sem créditos na API da Anthropic. Adicione créditos em console.anthropic.com → Billing.";
+    }
+    return `Erro da API (${err.status ?? "?"})${detail ? `: ${detail}` : ". Tente de novo."}`;
+  }
   return "Algo deu errado no servidor.";
+}
+
+/** Mensagem que a própria API mandou no corpo do erro (ex.: crédito esgotado). */
+function apiErrorDetail(err: InstanceType<typeof Anthropic.APIError>): string {
+  const body = err.error as { error?: { message?: unknown } } | undefined;
+  return typeof body?.error?.message === "string" ? body.error.message : "";
 }
 
 export async function POST(req: Request) {
