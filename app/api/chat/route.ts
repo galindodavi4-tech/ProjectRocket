@@ -1,33 +1,31 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { runAgent } from "@/lib/agent";
-import { runDemo } from "@/lib/demo";
+import OpenAI from "openai";
+import { runAnthropicAgent } from "@/lib/agents/anthropic";
+import { runOpenAICompatibleAgent } from "@/lib/agents/openaiCompatible";
+import { resolveProvider, type Provider } from "@/lib/providers";
 import { ChatRequestSchema, type StreamEvent } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-function errorMessage(err: unknown): string {
-  if (err instanceof Anthropic.AuthenticationError) return "Chave da API inválida. Confira o ANTHROPIC_API_KEY.";
-  if (err instanceof Anthropic.RateLimitError) return "Muitas requisições agora. Tente de novo em alguns segundos.";
-  if (err instanceof Anthropic.APIConnectionError) return "Não consegui falar com a API da Anthropic.";
-  if (err instanceof Anthropic.APIError) {
-    const detail = apiErrorDetail(err);
-    if (/credit balance/i.test(detail)) {
-      return "Sem créditos na API da Anthropic. Adicione créditos em console.anthropic.com → Billing.";
-    }
-    return `Erro da API (${err.status ?? "?"})${detail ? `: ${detail}` : ". Tente de novo."}`;
+/** Mensagem que o provedor mandou no corpo do erro (ex.: crédito esgotado, modelo inexistente). */
+function apiDetail(err: { error?: unknown; message?: string }): string {
+  const body = err.error as { error?: { message?: unknown }; message?: unknown } | undefined;
+  const msg = body?.error?.message ?? body?.message;
+  return typeof msg === "string" ? msg : "";
+}
+
+function errorMessage(err: unknown, provider: Provider): string {
+  const status = err instanceof Anthropic.APIError || err instanceof OpenAI.APIError ? err.status : undefined;
+  if (err instanceof Anthropic.APIConnectionError || err instanceof OpenAI.APIConnectionError) {
+    return `Não consegui falar com a API do ${provider.label}.`;
   }
-  return "Algo deu errado no servidor.";
-}
-
-function isNoCredit(err: unknown): boolean {
-  return err instanceof Anthropic.APIError && /credit balance/i.test(apiErrorDetail(err));
-}
-
-/** Mensagem que a própria API mandou no corpo do erro (ex.: crédito esgotado). */
-function apiErrorDetail(err: InstanceType<typeof Anthropic.APIError>): string {
-  const body = err.error as { error?: { message?: unknown } } | undefined;
-  return typeof body?.error?.message === "string" ? body.error.message : "";
+  if (status === undefined) return "Algo deu errado no servidor.";
+  const detail = apiDetail(err as { error?: unknown });
+  if (status === 401 || status === 403) return `Chave da IA (${provider.label}) recusada. Confira a variável na Vercel.`;
+  if (status === 404) return `Modelo “${provider.model}” não encontrado. Ajuste AI_MODEL na Vercel.${detail ? ` (${detail})` : ""}`;
+  if (status === 429) return `Limite de uso da IA atingido. Tente de novo daqui a pouco.${detail ? ` (${detail})` : ""}`;
+  return `Erro da API (${status})${detail ? `: ${detail}` : ". Tente de novo."}`;
 }
 
 export async function POST(req: Request) {
@@ -35,28 +33,32 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return Response.json({ error: "Requisição inválida." }, { status: 400 });
   }
+  const resolved = resolveProvider();
+  if ("error" in resolved) {
+    return Response.json({ error: resolved.error }, { status: 500 });
+  }
+  const { provider } = resolved;
 
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
-      let sentText = false;
-      const emit = (event: StreamEvent) => {
-        if (event.type === "text") sentText = true;
-        controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
-      };
+      const emit = (event: StreamEvent) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+      const history = parsed.data.messages;
       try {
-        if (!process.env.ANTHROPIC_API_KEY || process.env.DEMO_MODE === "1") {
-          await runDemo(parsed.data.messages, emit, req.signal);
+        if (provider.kind === "anthropic") {
+          await runAnthropicAgent(history, emit, { apiKey: provider.apiKey, model: provider.model, signal: req.signal });
         } else {
-          await runAgent(parsed.data.messages, emit, req.signal);
+          await runOpenAICompatibleAgent(history, emit, {
+            apiKey: provider.apiKey,
+            model: provider.model,
+            baseURL: provider.baseURL,
+            signal: req.signal,
+          });
         }
       } catch (err) {
-        // Sem crédito na API: responde pelo modo demonstração em vez de travar.
-        if (!sentText && isNoCredit(err)) {
-          await runDemo(parsed.data.messages, emit, req.signal);
-        } else if (!req.signal.aborted) {
+        if (!req.signal.aborted) {
           console.error(err);
-          emit({ type: "error", message: errorMessage(err) });
+          emit({ type: "error", message: errorMessage(err, provider) });
         }
       } finally {
         if (!req.signal.aborted) {

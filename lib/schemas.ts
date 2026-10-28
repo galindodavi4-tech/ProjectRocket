@@ -107,6 +107,4 @@ export type StreamEvent =
   | { type: "rocket"; model: RocketModel }
   | { type: "sources"; sources: Source[] }
   | { type: "error"; message: string }
-  /** Avisa que a resposta veio do modo demonstração (sem IA). */
-  | { type: "mode"; demo: boolean }
   | { type: "done" };
