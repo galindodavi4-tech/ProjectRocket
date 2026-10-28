@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { runAgent } from "@/lib/agent";
+import { runDemo } from "@/lib/demo";
 import { ChatRequestSchema, type StreamEvent } from "@/lib/schemas";
 
 export const runtime = "nodejs";
@@ -19,6 +20,10 @@ function errorMessage(err: unknown): string {
   return "Algo deu errado no servidor.";
 }
 
+function isNoCredit(err: unknown): boolean {
+  return err instanceof Anthropic.APIError && /credit balance/i.test(apiErrorDetail(err));
+}
+
 /** Mensagem que a própria API mandou no corpo do erro (ex.: crédito esgotado). */
 function apiErrorDetail(err: InstanceType<typeof Anthropic.APIError>): string {
   const body = err.error as { error?: { message?: unknown } } | undefined;
@@ -26,10 +31,6 @@ function apiErrorDetail(err: InstanceType<typeof Anthropic.APIError>): string {
 }
 
 export async function POST(req: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return Response.json({ error: "Defina ANTHROPIC_API_KEY no .env.local." }, { status: 500 });
-  }
-
   const parsed = ChatRequestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return Response.json({ error: "Requisição inválida." }, { status: 400 });
@@ -38,11 +39,22 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const emit = (event: StreamEvent) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+      let sentText = false;
+      const emit = (event: StreamEvent) => {
+        if (event.type === "text") sentText = true;
+        controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+      };
       try {
-        await runAgent(parsed.data.messages, emit, req.signal);
+        if (!process.env.ANTHROPIC_API_KEY || process.env.DEMO_MODE === "1") {
+          await runDemo(parsed.data.messages, emit, req.signal);
+        } else {
+          await runAgent(parsed.data.messages, emit, req.signal);
+        }
       } catch (err) {
-        if (!req.signal.aborted) {
+        // Sem crédito na API: responde pelo modo demonstração em vez de travar.
+        if (!sentText && isNoCredit(err)) {
+          await runDemo(parsed.data.messages, emit, req.signal);
+        } else if (!req.signal.aborted) {
           console.error(err);
           emit({ type: "error", message: errorMessage(err) });
         }

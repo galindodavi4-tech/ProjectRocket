@@ -20,10 +20,18 @@ cp .env.example .env.local   # e cole a chave em ANTHROPIC_API_KEY
 npm run dev                  # http://localhost:3000
 ```
 
+## Modo demonstração (sem custo)
+
+Sem `ANTHROPIC_API_KEY` — ou se a conta da API estiver sem crédito — o app
+responde sozinho, sem IA e sem gastar nada. A checagem de lançamento e o foguete
+3D funcionam igual (são cálculo); perguntas livres e busca na web não. Um selo
+“Modo demonstração” aparece no topo. Para forçar o modo mesmo com chave, defina
+`DEMO_MODE=1`.
+
 ## Testar
 
 ```bash
-npm test           # regras da checagem de lançamento (Vitest)
+npm test           # checagem de lançamento e modo demonstração (Vitest)
 npm run typecheck
 npm run build
 ```

@@ -45,6 +45,11 @@ export default function Home() {
             <h1 className="text-xl font-semibold leading-tight">Space Agent</h1>
             <p className="text-xs text-ink-muted">Espaço · Lançamento · Mercado · 3D</p>
           </div>
+          {agent.demo && (
+            <span title="Sem IA: checagem e 3D funcionam; perguntas livres e busca, não.">
+              <StatPill tone="warm">Modo demonstração</StatPill>
+            </span>
+          )}
         </div>
         <nav className="flex gap-3" aria-label="Ações">
           <IconButton label="Nova conversa" onClick={agent.reset}>

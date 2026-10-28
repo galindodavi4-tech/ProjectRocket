@@ -24,6 +24,7 @@ export function useSpaceAgent() {
   const [status, setStatus] = useState<string | null>(null);
   const [rocket, setRocket] = useState<RocketModel | null>(null);
   const [launch, setLaunch] = useState<LaunchResult | null>(null);
+  const [demo, setDemo] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const patchLast = (fn: (m: UiMessage) => UiMessage) =>
@@ -79,6 +80,9 @@ export function useSpaceAgent() {
             case "sources":
               patchLast((m) => ({ ...m, sources: event.sources }));
               break;
+            case "mode":
+              setDemo(event.demo);
+              break;
             case "error":
               patchLast((m) => ({ ...m, error: event.message }));
               break;
@@ -122,5 +126,5 @@ export function useSpaceAgent() {
     setLaunch(null);
   }, []);
 
-  return { messages, busy, status, rocket, launch, send, retry, stop, reset };
+  return { messages, busy, status, rocket, launch, demo, send, retry, stop, reset };
 }
