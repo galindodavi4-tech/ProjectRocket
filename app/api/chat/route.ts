@@ -11,6 +11,8 @@ export const maxDuration = 120;
 
 /** Mensagem que o provedor mandou no corpo do erro (ex.: crédito esgotado, modelo inexistente). */
 function apiDetail(err: { error?: unknown; message?: string }): string {
+  // A Anthropic manda { error: { message } }; a xAI e outras às vezes mandam só o texto.
+  if (typeof err.error === "string") return err.error;
   const body = err.error as { error?: { message?: unknown }; message?: unknown } | undefined;
   const msg = body?.error?.message ?? body?.message;
   return typeof msg === "string" ? msg : "";
@@ -23,7 +25,9 @@ function errorMessage(err: unknown, provider: Provider): string {
   }
   if (status === undefined) return "Algo deu errado no servidor.";
   const detail = apiDetail(err as { error?: unknown });
-  if (status === 401 || status === 403) return `Chave da IA (${provider.label}) recusada. Confira a variável na Vercel.`;
+  if (status === 401 || status === 403 || /api key/i.test(detail)) {
+    return `Chave da IA (${provider.label}) recusada. Confira a variável na Vercel.${detail ? ` (${detail})` : ""}`;
+  }
   if (status === 404) return `Modelo “${provider.model}” não encontrado. Ajuste AI_MODEL na Vercel.${detail ? ` (${detail})` : ""}`;
   if (status === 429) return `Limite de uso da IA atingido. Tente de novo daqui a pouco.${detail ? ` (${detail})` : ""}`;
   return `Erro da API (${status})${detail ? `: ${detail}` : ". Tente de novo."}`;
