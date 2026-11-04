@@ -1,5 +1,7 @@
 # Space Agent — análise da estrutura
 
+> **Versão 2** (construtor, simulador e finanças) descrita na [seção 10](#10-versão-2--construtor-voo-e-financiamento).
+
 Análise do PRD *Space AI Agent* e do kit de UI de referência, e como o projeto
 desta pasta foi organizado a partir deles.
 
@@ -246,3 +248,64 @@ Os tokens e a troca de cor estão em [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md).
 - **Histórico longo:** só as últimas 40 mensagens vão ao servidor.
 - **Ideias futuras (do PRD):** órbita visualizada, mais modelos de foguete,
   salvar projetos, estabilidade real (centro de massa × centro de pressão).
+
+## 10. Versão 2 — construtor, voo e financiamento
+
+A v1 respondia perguntas e checava foguetes descritos em texto, mas o 3D era
+estático e não dava para montar nada. A v2 mantém o escopo do PRD (chat, checagem,
+3D, mercado e economia) e transforma o app num laboratório de foguetes.
+
+### O que entrou
+
+| Área | Antes (v1) | Agora (v2) |
+|---|---|---|
+| Montagem | Só pelo chat, com números soltos | **Construtor**: 1 a 3 estágios, motor real de catálogo, propelente, quantidade de motores, massa de propelente, material, diâmetro, propulsores laterais, estabilidade, reutilização, carga e destino |
+| Dados | Nenhum | Catálogo com motores, propelentes, materiais e foguetes reais ([DADOS.md](DADOS.md)) |
+| 3D | Foguete parado com peças vermelhas | Proporções reais, chama da cor do propelente, **lançamento animado**: céu escurecendo, Terra, separação de estágios, coifa, propulsores e explosão na falha |
+| Física | 5 regras do PRD | As 5 regras (estendidas) + **simulador de subida** em 2D: gravidade, arrasto, Max-Q, estágios, voo livre e circularização |
+| Economia | Só conversa com busca | **Custo por lançamento**, custo por kg comparado ao mercado, custo de desenvolvimento e **plano de financiamento** (investidores, governo, empréstimo, retorno) |
+| IA | Checa e desenha | Também **altera o projeto** (`update_design`) e **lança** (`launch_flight`), sempre com números calculados pelo código |
+
+### Como os módulos se ligam
+
+```
+lib/catalog.ts ─┐
+                ├─ lib/design.ts ── analyzeDesign ─┬─ checkLaunch (regras do PRD)
+lib/presets.ts ─┘   (projeto → massas,            ├─ lib/economics.ts (custos e negócio)
+                     empuxo, tamanho)              ├─ lib/sim/ascent.ts (voo segundo a segundo)
+                                                   └─ lib/rocketModel.ts (geometria do 3D)
+```
+
+O princípio do PRD continua: **a IA conversa, o código calcula.** O veredito vem do
+`checkLaunch`; desempenho, custo e voo vêm dos módulos acima; a IA só lê e explica.
+
+### Extensões às regras do PRD (compatíveis com a v1)
+
+- **Propulsores laterais** somam empuxo na decolagem e entram no Δv como uma fase em paralelo.
+- **Reserva de pouso**: reutilizar o 1º estágio guarda 8% (balsa) ou 15% (volta à base) do propelente, que não entra no Δv.
+- **Gimbal**: motores que giram estabilizam o foguete sem aletas (é como Falcon 9 e Electron voam). Sem aletas e sem gimbal, continua reprovando.
+- Quando esses campos não são informados, as 5 regras funcionam exatamente como na v1.
+
+### Checagem × simulação
+
+A checagem usa margens fixas (empuxo/peso > 1,2; Δv tabelado). A simulação calcula
+perdas de gravidade e arrasto ao longo do voo. Perto do limite podem discordar — o
+Saturn V real decolou com empuxo/peso ~1,16 e aparece reprovado na checagem, mas
+chega à Lua na simulação. O app explica a diferença na aba Missão.
+
+### Falhas que viram cena
+
+| Situação | O que acontece no voo |
+|---|---|
+| Empuxo menor que o peso | Motores acesos, foguete não sai do chão |
+| Sem aletas nem gimbal | Perde o controle na Max-Q e se parte |
+| Estágio com mais de 95% de propelente | Estrutura cede na Max-Q |
+| Acelera demais no ar denso (> 80 kPa) | Falha aerodinâmica |
+| Δv insuficiente | Voo suborbital: sobe e cai |
+| Chega à órbita baixa sem Δv para GTO/Lua | Para na órbita baixa |
+
+### Ideias para uma v3
+
+Visualizar a órbita ao redor da Terra, motores de estágio superior misturados num
+mesmo estágio (como a Starship), comparar dois projetos lado a lado e um modo
+"desafio" com missões e orçamento para a turma.

@@ -5,6 +5,7 @@ import type {
   BetaToolResultBlockParam,
   BetaToolUnion,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type { RocketDesign } from "../design";
 import type { ChatMessage, Source, StreamEvent } from "../schemas";
 import { buildSystemPrompt } from "../systemPrompt";
 import { executeTool, LOCAL_TOOLS, toJsonSchema, toolStatusLabel, type ToolState } from "../tools";
@@ -45,13 +46,13 @@ function collectSources(content: BetaContentBlock[], into: Map<string, Source>) 
 export async function runAnthropicAgent(
   history: ChatMessage[],
   emit: Emit,
-  opts: { apiKey: string; model: string; signal?: AbortSignal },
+  opts: { apiKey: string; model: string; signal?: AbortSignal; design?: RocketDesign },
 ) {
   const client = new Anthropic({ apiKey: opts.apiKey });
   const messages: BetaMessageParam[] = history.map((m) => ({ role: m.role, content: m.content }));
-  const state: ToolState = {};
+  const state: ToolState = { design: opts.design };
   const sources = new Map<string, Source>();
-  const system = buildSystemPrompt({ webSearch: true });
+  const system = buildSystemPrompt({ webSearch: true, design: opts.design });
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const stream = client.beta.messages.stream(

@@ -11,6 +11,11 @@ variáveis de ambiente em `lib/providers.ts`. PRD analisado em `docs/ANALISE.md`
   `lib/tools/checkLaunch.ts`. Não mover lógica de decisão para o prompt.
 - IDs de peça vêm de `lib/parts.ts` e ligam a checagem ao 3D. Mudou um, mude nos dois lados.
 - Ferramentas locais e sua execução ficam em `lib/tools/index.ts`, compartilhadas pelos dois loops.
+- Construtor: catálogo em `lib/catalog.ts` (valores reais aproximados; fontes em `docs/DADOS.md`),
+  projeto → massas em `lib/design.ts`, custos em `lib/economics.ts`, voo em `lib/sim/ascent.ts`.
+  Mudou o modelo físico ou o catálogo? Rode `npm test`: os testes conferem os foguetes reais.
+- A IA nunca inventa desempenho ou custo: lê o resumo de `lib/designSummary.ts` e muda o projeto
+  só pela ferramenta `update_design`.
 - Schemas zod em `lib/schemas.ts` são a fonte única: geram o JSON Schema das ferramentas
   e validam a entrada no servidor.
 - Cores, raios e sombras só pelos tokens de `app/globals.css` (design system “Turquesa”,

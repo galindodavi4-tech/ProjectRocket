@@ -55,6 +55,7 @@
       radial-gradient(1200px 600px at 15% -10%, rgb(46 230 214 / 0.12), transparent 60%),
       radial-gradient(900px 500px at 110% 110%, rgb(169 155 255 / 0.1), transparent 60%),
       var(--color-bg);
+    background-attachment: fixed;
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -105,5 +106,16 @@
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }

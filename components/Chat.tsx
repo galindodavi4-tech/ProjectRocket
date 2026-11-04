@@ -14,14 +14,17 @@ type Props = {
   status: string | null;
   onSend: (text: string) => void;
   onStop: () => void;
+  className?: string;
 };
 
-export function Chat({ messages, busy, status, onSend, onStop }: Props) {
+export function Chat({ messages, busy, status, onSend, onStop, className = "" }: Props) {
   const [draft, setDraft] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
+  // Rola só a lista de mensagens, nunca a página.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const el = listRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, status]);
 
   const submit = (e: React.FormEvent) => {
@@ -32,14 +35,14 @@ export function Chat({ messages, busy, status, onSend, onStop }: Props) {
   };
 
   return (
-    <Card className="flex h-[70dvh] min-h-[420px] flex-col p-0 lg:sticky lg:top-5 lg:h-[calc(100dvh-7.5rem)]">
-      <div className="ds-scroll flex-1 space-y-5 overflow-y-auto px-5 pt-5 pb-3" aria-live="polite">
+    <Card className={`flex min-h-[420px] flex-col p-0 ${className}`}>
+      <div ref={listRef} className="ds-scroll flex-1 space-y-5 overflow-y-auto px-5 pt-5 pb-3" aria-live="polite">
         {messages.length === 0 && (
           <div className="flex h-full flex-col justify-end gap-4">
             <div>
-              <p className="text-lg font-semibold">Pergunte sobre o espaço.</p>
+              <p className="text-lg font-semibold">Pergunte ao Space Agent.</p>
               <p className="mt-1 text-sm text-ink-muted">
-                Astronomia, checagem de lançamento, foguete em 3D e tendências de marketing e economia.
+                Ele explica astronomia e economia, checa foguetes, muda o seu projeto e lança ele para você.
               </p>
             </div>
             <div className="flex flex-col items-start gap-2">
@@ -100,7 +103,6 @@ export function Chat({ messages, busy, status, onSend, onStop }: Props) {
             </div>
           ),
         )}
-        <div ref={endRef} />
       </div>
 
       <form onSubmit={submit} className="flex gap-3 border-t border-line/40 p-4">
@@ -115,7 +117,7 @@ export function Chat({ messages, busy, status, onSend, onStop }: Props) {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) submit(e);
           }}
-          placeholder="PERGUNTE AO SPACE AGENT"
+          placeholder="PERGUNTE AO AGENTE"
           className="h-12 max-h-40 min-w-0 flex-1 resize-none rounded-[var(--radius-control)] border border-line bg-surface/50 px-4 py-3 text-sm text-ink placeholder:tracking-[0.14em] placeholder:text-ink-faint focus:border-primary focus:outline-none"
         />
         {busy ? (

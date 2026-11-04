@@ -95,6 +95,7 @@ describe("custos e financiamento", () => {
     expect(usd(1_234_000_000)).toBe("US$ 1,23 bi");
     expect(usd(22_500_000)).toBe("US$ 22,5 mi");
     expect(usd(850_000)).toBe("US$ 850 mil");
+    expect(usd(1_491)).toBe("US$ 1.491");
   });
 });
 

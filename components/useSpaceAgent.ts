@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import type { RocketDesign } from "@/lib/design";
 import type { ChatMessage, LaunchResult, RocketModel, Source, StreamEvent } from "@/lib/schemas";
+
+export type AgentHooks = {
+  /** Projeto aberto no construtor, enviado junto com cada pergunta. */
+  getDesign: () => RocketDesign;
+  onDesign: (design: RocketDesign) => void;
+  onFlight: () => void;
+  onRocket: (model: RocketModel) => void;
+};
 
 export type UiMessage = {
   id: string;
@@ -18,7 +27,9 @@ const newId = () => `m${Date.now().toString(36)}${(seq++).toString(36)}`;
  * Estado do app inteiro: histórico (guardado só no navegador e reenviado a cada
  * pergunta), o último foguete e a última checagem de lançamento.
  */
-export function useSpaceAgent() {
+export function useSpaceAgent(hooks: AgentHooks) {
+  const hooksRef = useRef(hooks);
+  hooksRef.current = hooks;
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -43,7 +54,7 @@ export function useSpaceAgent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: payload.slice(-40) }),
+        body: JSON.stringify({ messages: payload.slice(-40), design: hooksRef.current.getDesign() }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
@@ -75,6 +86,13 @@ export function useSpaceAgent() {
               break;
             case "rocket":
               setRocket(event.model);
+              hooksRef.current.onRocket(event.model);
+              break;
+            case "design":
+              hooksRef.current.onDesign(event.design);
+              break;
+            case "flight":
+              hooksRef.current.onFlight();
               break;
             case "sources":
               patchLast((m) => ({ ...m, sources: event.sources }));

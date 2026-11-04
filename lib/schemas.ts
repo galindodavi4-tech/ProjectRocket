@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { PropellantId } from "./catalog";
+import type { RocketDesign } from "./design";
 
 /** Órbitas suportadas pela checagem v1 e o Δv necessário para cada uma (m/s). */
 export const REQUIRED_DELTA_V_MS = {
@@ -90,6 +92,15 @@ export const ShowRocketInputSchema = z.object({
 
 export type ShowRocketInput = z.infer<typeof ShowRocketInputSchema>;
 
+/** Formas e proporções reais, quando o foguete vem do construtor (em metros). */
+export type RocketGeometry = {
+  diameterM: number;
+  /** Do 1º (base) ao último estágio. */
+  stages: { lengthM: number; engineCount: number; propellant: PropellantId; vacuumEngine: boolean }[];
+  boosters: { count: number; lengthM: number; diameterM: number } | null;
+  stability: "fins" | "gimbal" | "none";
+};
+
 /** O que o visualizador 3D precisa para desenhar o foguete. */
 export type RocketModel = {
   name: string;
@@ -98,6 +109,7 @@ export type RocketModel = {
   /** null quando o foguete foi exibido sem checagem de lançamento. */
   canLaunch: boolean | null;
   parts: Part[];
+  geometry?: RocketGeometry;
 };
 
 export const ChatMessageSchema = z.object({
@@ -113,6 +125,8 @@ export const ChatRequestSchema = z.object({
     .refine((m) => m[0].role === "user" && m[m.length - 1].role === "user", {
       message: "A conversa deve começar e terminar com uma mensagem do usuário",
     }),
+  /** Projeto aberto no construtor; validado no servidor com RocketDesignSchema. */
+  design: z.unknown().optional(),
 });
 
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
@@ -127,4 +141,8 @@ export type StreamEvent =
   | { type: "rocket"; model: RocketModel }
   | { type: "sources"; sources: Source[] }
   | { type: "error"; message: string }
+  /** A IA alterou o projeto do construtor. */
+  | { type: "design"; design: RocketDesign }
+  /** A IA pediu para lançar o foguete do construtor. */
+  | { type: "flight" }
   | { type: "done" };

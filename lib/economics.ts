@@ -177,6 +177,6 @@ export function usd(v: number): string {
   const f = (n: number, d: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: d, minimumFractionDigits: d });
   if (a >= 1e9) return `${sign}US$ ${f(a / 1e9, 2)} bi`;
   if (a >= 1e6) return `${sign}US$ ${f(a / 1e6, a >= 1e8 ? 0 : 1)} mi`;
-  if (a >= 1e3) return `${sign}US$ ${f(a / 1e3, 0)} mil`;
+  if (a >= 1e5) return `${sign}US$ ${f(a / 1e3, 0)} mil`;
   return `${sign}US$ ${f(a, 0)}`;
 }

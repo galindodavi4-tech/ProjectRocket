@@ -3,6 +3,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from "openai/resources/chat/completions";
+import type { RocketDesign } from "../design";
 import type { ChatMessage, StreamEvent } from "../schemas";
 import { buildSystemPrompt } from "../systemPrompt";
 import { executeTool, LOCAL_TOOLS, toJsonSchema, toolStatusLabel, type ToolState } from "../tools";
@@ -24,14 +25,14 @@ type PendingCall = { id: string; name: string; args: string };
 export async function runOpenAICompatibleAgent(
   history: ChatMessage[],
   emit: Emit,
-  opts: { apiKey: string; model: string; baseURL?: string; signal?: AbortSignal },
+  opts: { apiKey: string; model: string; baseURL?: string; signal?: AbortSignal; design?: RocketDesign },
 ) {
   const client = new OpenAI({ apiKey: opts.apiKey, baseURL: opts.baseURL });
   const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: buildSystemPrompt({ webSearch: false }) },
+    { role: "system", content: buildSystemPrompt({ webSearch: false, design: opts.design }) },
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
-  const state: ToolState = {};
+  const state: ToolState = { design: opts.design };
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const stream = await client.chat.completions.create(

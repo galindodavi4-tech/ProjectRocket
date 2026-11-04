@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { runAnthropicAgent } from "@/lib/agents/anthropic";
 import { runOpenAICompatibleAgent } from "@/lib/agents/openaiCompatible";
+import { RocketDesignSchema } from "@/lib/design";
 import { resolveProvider, type Provider } from "@/lib/providers";
 import { ChatRequestSchema, type StreamEvent } from "@/lib/schemas";
 
@@ -44,15 +45,18 @@ export async function POST(req: Request) {
     async start(controller) {
       const emit = (event: StreamEvent) => controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       const history = parsed.data.messages;
+      const designParsed = RocketDesignSchema.safeParse(parsed.data.design);
+      const design = designParsed.success ? designParsed.data : undefined;
       try {
         if (provider.kind === "anthropic") {
-          await runAnthropicAgent(history, emit, { apiKey: provider.apiKey, model: provider.model, signal: req.signal });
+          await runAnthropicAgent(history, emit, { apiKey: provider.apiKey, model: provider.model, signal: req.signal, design });
         } else {
           await runOpenAICompatibleAgent(history, emit, {
             apiKey: provider.apiKey,
             model: provider.model,
             baseURL: provider.baseURL,
             signal: req.signal,
+            design,
           });
         }
       } catch (err) {

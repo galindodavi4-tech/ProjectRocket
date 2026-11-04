@@ -1,9 +1,20 @@
 # Space Agent
 
-Agente de IA que responde sobre espaço e astronomia, diz se uma nave pode lançar,
-comenta tendências de marketing e economia e mostra um foguete 3D interativo com
-as peças com defeito em vermelho. Feito a partir do PRD *Space AI Agent*, com o
-design system “Turquesa”.
+Laboratório de foguetes com um agente de IA. Monte o seu foguete com motores e
+materiais reais, veja o desempenho e o custo, monte o plano de financiamento e
+**lance** — com animação 3D, telemetria e falhas que viram cena. O agente
+responde sobre espaço, economia e mercado, e também altera e lança o foguete por você.
+Feito a partir do PRD *Space AI Agent*, com o design system “Turquesa”.
+
+## O que dá para fazer
+
+- **Construir**: partir de Falcon 9, Electron, Saturn V ou Atlas V, ou do zero; escolher 1 a 3 estágios, propelente (querosene, metano, hidrogênio), motor real, quantidade, propelente no tanque, material, diâmetro, propulsores laterais, estabilidade (aletas ou gimbal), reutilização, carga útil e destino (órbita baixa, GTO ou Lua). Salvar projetos.
+- **Desempenho**: checagem do PRD, empuxo/peso, Δv por estágio, carga máxima para cada órbita e para onde vai a massa.
+- **Finanças**: custo por lançamento, custo por kg comparado ao mercado, custo de desenvolvimento e plano de negócio — preço, lançamentos por ano, investidores, contratos do governo, empréstimo e tempo de retorno.
+- **Missão**: simulação da subida segundo a segundo, com animação 3D, tela cheia, controle de velocidade (1×, 10×, 50×), trajetória, gráficos e linha do tempo.
+- **Agente**: "troque para metano", "deixe mais barato por kg", "lance o foguete" — ele muda o projeto e explica com os números do app.
+
+Os números são aproximados e educativos. Fontes em [`docs/DADOS.md`](docs/DADOS.md).
 
 ![Tela inicial](docs/tela-inicial.png)
 

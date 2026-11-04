@@ -17,6 +17,8 @@ const CD = 0.3;
 const MAX_G = 4.5;
 /** Pressão dinâmica máxima que um foguete aguenta (~2× a Max-Q típica). */
 const MAX_Q_PA = 80_000;
+/** A partir daqui o simulador reduz a potência ("throttle bucket"). */
+const THROTTLE_Q_PA = 35_000;
 const TARGET_PERIGEE = 180_000;
 const TARGET_APOGEE = 200_000;
 const DT = 0.25;
@@ -214,6 +216,10 @@ export function simulateAscent(design: RocketDesign, analysis: DesignAnalysis): 
     let throttle = 1;
     if (thrust > MAX_G * G0 * m && burning) {
       throttle = Math.max(0.4, (MAX_G * G0 * m) / thrust);
+    }
+    // Como os foguetes reais, reduz a potência perto da Max-Q para não estourar a pressão do ar.
+    if (q > THROTTLE_Q_PA && burning) {
+      throttle = Math.max(0.4, Math.min(throttle, throttle * (THROTTLE_Q_PA / q) ** 2));
     }
     thrust *= throttle;
     flow *= throttle;
