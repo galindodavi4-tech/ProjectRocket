@@ -99,7 +99,7 @@ describe("mercado de missões", () => {
     const { pricePerKg } = await import("../lib/company");
     for (const seed of [1, 2, 3, 4, 5]) {
       const c = startCompany("A", "BR", seed);
-      expect(c.missions.some((m) => m.orbit === "LEO" && m.payloadKg <= 400)).toBe(true);
+      expect(c.missions.some((m) => m.orbit === "LEO" && m.payloadKg <= 350)).toBe(true);
     }
     expect(pricePerKg("LEO", 300)).toBeGreaterThan(20_000);
     expect(pricePerKg("LEO", 15_000)).toBeLessThan(7_000);

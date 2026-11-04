@@ -154,7 +154,7 @@ export function pricePerKg(orbit: Orbit, kg: number) {
 const MIN_PAYMENT: Record<Orbit, number> = { LEO: 7_500_000, GTO: 25_000_000, Moon: 60_000_000 };
 
 const TEMPLATES: { client: (country: string) => string; description: string; orbit: Orbit; kg: [number, number] }[] = [
-  { client: (c) => `Universidade · ${c}`, description: "Cubesats de pesquisa em órbita baixa", orbit: "LEO", kg: [80, 400] },
+  { client: (c) => `Universidade · ${c}`, description: "Cubesats de pesquisa em órbita baixa", orbit: "LEO", kg: [80, 350] },
   { client: () => "StarNet Comunicações", description: "Lote de satélites de internet", orbit: "LEO", kg: [4_000, 14_000] },
   { client: () => "ClimaSat", description: "Satélite meteorológico", orbit: "LEO", kg: [800, 3_500] },
   { client: () => "Agência espacial parceira", description: "Carga para uma estação espacial", orbit: "LEO", kg: [2_500, 8_000] },
@@ -163,8 +163,8 @@ const TEMPLATES: { client: (country: string) => string; description: string; orb
   { client: () => "AgroVisão", description: "Satélite de observação de lavouras", orbit: "LEO", kg: [300, 1_500] },
 ];
 
-/** Missões bem pequenas (até 400 kg em órbita baixa): toda rodada tem uma, para foguetes pequenos terem trabalho. */
-const SMALL = TEMPLATES.map((t, i) => (t.orbit === "LEO" && t.kg[1] <= 400 ? i : -1)).filter((i) => i >= 0);
+/** Missões bem pequenas (até 350 kg em órbita baixa): toda rodada tem uma, para foguetes pequenos terem trabalho. */
+const SMALL = TEMPLATES.map((t, i) => (t.orbit === "LEO" && t.kg[1] <= 350 ? i : -1)).filter((i) => i >= 0);
 
 function generateMissions(c: Pick<Company, "countryId" | "quarter" | "event">, rng: ReturnType<typeof makeRng>): Mission[] {
   const country = countryById(c.countryId).name;
