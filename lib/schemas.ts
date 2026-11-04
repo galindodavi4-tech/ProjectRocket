@@ -15,6 +15,19 @@ export const StageSchema = z.object({
   thrustN: z.number().positive().describe("Empuxo total do estágio na ignição, em newtons"),
   ispSeconds: z.number().positive().describe("Impulso específico, em segundos"),
   engineCount: z.number().int().positive().describe("Número de motores do estágio"),
+  reservePropellantKg: z
+    .number()
+    .nonnegative()
+    .optional()
+    .describe("Propelente guardado para pousar o estágio (não entra no Δv). Omitir se descartável"),
+});
+
+export const SideBoostersSchema = z.object({
+  count: z.number().int().min(1).max(6).describe("Quantos propulsores laterais"),
+  thrustN: z.number().positive().describe("Empuxo de UM propulsor na decolagem, em newtons"),
+  ispSeconds: z.number().positive().describe("Impulso específico do propulsor, em segundos"),
+  propellantMassKg: z.number().positive().describe("Propelente de UM propulsor, em kg"),
+  dryMassKg: z.number().positive().describe("Massa seca de UM propulsor, em kg"),
 });
 
 export const LaunchInputSchema = z.object({
@@ -27,6 +40,13 @@ export const LaunchInputSchema = z.object({
   payloadMassKg: z.number().nonnegative().describe("Massa da carga útil, em kg"),
   targetOrbit: TargetOrbit.describe("Destino: LEO, GTO ou Moon (injeção translunar)"),
   hasFins: z.boolean().describe("Se o foguete tem aletas"),
+  hasThrustVectoring: z
+    .boolean()
+    .optional()
+    .describe("Se os motores giram para estabilizar (gimbal). Substitui as aletas. Omitir se não informado"),
+  sideBoosters: SideBoostersSchema.optional().describe(
+    "Propulsores laterais que queimam junto com o 1º estágio e se soltam ao acabar. Omitir se não houver",
+  ),
   fuelTankCapacityKg: z
     .number()
     .positive()
