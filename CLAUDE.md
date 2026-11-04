@@ -14,6 +14,9 @@ variáveis de ambiente em `lib/providers.ts`. PRD analisado em `docs/ANALISE.md`
 - Construtor: catálogo em `lib/catalog.ts` (valores reais aproximados; fontes em `docs/DADOS.md`),
   projeto → massas em `lib/design.ts`, custos em `lib/economics.ts`, voo em `lib/sim/ascent.ts`.
   Mudou o modelo físico ou o catálogo? Rode `npm test`: os testes conferem os foguetes reais.
+- Empresa: lógica pura em `lib/company.ts` (funções que recebem e devolvem o estado; sorte com
+  semente). A tela só chama essas funções. Mudou o equilíbrio do jogo? Rode `npm test`.
+- Todo termo novo na interface ganha uma entrada em `lib/glossary.ts` e um botão `InfoTip`.
 - A IA nunca inventa desempenho ou custo: lê o resumo de `lib/designSummary.ts` e muda o projeto
   só pela ferramenta `update_design`.
 - Schemas zod em `lib/schemas.ts` são a fonte única: geram o JSON Schema das ferramentas

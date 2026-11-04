@@ -127,6 +127,8 @@ export const ChatRequestSchema = z.object({
     }),
   /** Projeto aberto no construtor; validado no servidor com RocketDesignSchema. */
   design: z.unknown().optional(),
+  /** Resumo da empresa do simulador (dados do navegador, só para contexto). */
+  company: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;

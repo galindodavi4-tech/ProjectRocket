@@ -46,13 +46,13 @@ function collectSources(content: BetaContentBlock[], into: Map<string, Source>) 
 export async function runAnthropicAgent(
   history: ChatMessage[],
   emit: Emit,
-  opts: { apiKey: string; model: string; signal?: AbortSignal; design?: RocketDesign },
+  opts: { apiKey: string; model: string; signal?: AbortSignal; design?: RocketDesign; company?: string },
 ) {
   const client = new Anthropic({ apiKey: opts.apiKey });
   const messages: BetaMessageParam[] = history.map((m) => ({ role: m.role, content: m.content }));
   const state: ToolState = { design: opts.design };
   const sources = new Map<string, Source>();
-  const system = buildSystemPrompt({ webSearch: true, design: opts.design });
+  const system = buildSystemPrompt({ webSearch: true, design: opts.design, company: opts.company });
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const stream = client.beta.messages.stream(

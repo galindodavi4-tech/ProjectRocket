@@ -5,6 +5,7 @@ import { AreaChart } from "../ui/AreaChart";
 import { BarList } from "../ui/BarList";
 import { DonutGauge } from "../ui/DonutGauge";
 import { MeterBars } from "../ui/MeterBars";
+import { InfoTip } from "../ui/InfoTip";
 import { Stat } from "../ui/Stat";
 
 /** Tudo o que a checagem e o modelo dizem sobre o projeto. */
@@ -42,9 +43,9 @@ export function PerformancePanel({ design, analysis }: { design: RocketDesign; a
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Stat label="Massa" value={mass(analysis.liftoffMassKg)} sub="na decolagem" />
         <Stat label="Altura" value={`${num(analysis.heightM)} m`} sub={`${num(design.diameterM, 1)} m de diâmetro`} />
-        <Stat label="Empuxo" value={force(m.twr * analysis.liftoffMassKg * 9.81)} sub="na decolagem" />
+        <Stat label="Empuxo" info="twr" value={force(m.twr * analysis.liftoffMassKg * 9.81)} sub="na decolagem" />
         {(["LEO", "GTO", "Moon"] as const).map((o) => (
-          <Stat key={o} label={`Máx. ${ORBIT_SHORT[o]}`} sub="de carga útil" value={maxPayload[o] > 0 ? mass(maxPayload[o]) : "—"}
+          <Stat key={o} label={`Máx. ${ORBIT_SHORT[o]}`} info="maxPayload" sub="de carga útil" value={maxPayload[o] > 0 ? mass(maxPayload[o]) : "—"}
             tone={o === design.targetOrbit ? (maxPayload[o] >= design.payloadMassKg && maxPayload[o] > 0 ? "ok" : "bad") : undefined} />
         ))}
       </div>
@@ -56,7 +57,7 @@ export function PerformancePanel({ design, analysis }: { design: RocketDesign; a
       </div>
 
       <div>
-        <h3 className="ds-label mb-2">Orçamento de Δv</h3>
+        <h3 className="ds-label mb-2 flex items-center gap-1.5">Orçamento de Δv <InfoTip term="deltaV" /></h3>
         <AreaChart
           labels={cumulative.map((_, i) => (i === 0 ? "solo" : `E${i}`))}
           series={[
@@ -71,12 +72,12 @@ export function PerformancePanel({ design, analysis }: { design: RocketDesign; a
 
       <div className="grid gap-5 sm:grid-cols-[auto_1fr] sm:items-start">
         <div className="flex flex-col items-center">
-          <h3 className="ds-label mb-2">Propelente</h3>
+          <h3 className="ds-label mb-2 flex items-center gap-1.5">Propelente <InfoTip term="propellantFraction" /></h3>
           <MeterBars min={MIN_PROPELLANT_FRACTION} max={MAX_PROPELLANT_FRACTION}
             bars={m.propellantFractions.map((f, i) => ({ label: `E${i + 1}`, fraction: f, danger: f < MIN_PROPELLANT_FRACTION || f > MAX_PROPELLANT_FRACTION }))} />
         </div>
         <div>
-          <h3 className="ds-label mb-3">Para onde vai a massa</h3>
+          <h3 className="ds-label mb-3 flex items-center gap-1.5">Para onde vai a massa <InfoTip term="payload" /></h3>
           <BarList bars={[
             { label: "Propelente", value: totals.propellant, display: mass(totals.propellant) },
             { label: "Estrutura, coifa e eletrônica", value: totals.structure, display: mass(totals.structure) },

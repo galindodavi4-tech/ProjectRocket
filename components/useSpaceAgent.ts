@@ -7,6 +7,8 @@ import type { ChatMessage, LaunchResult, RocketModel, Source, StreamEvent } from
 export type AgentHooks = {
   /** Projeto aberto no construtor, enviado junto com cada pergunta. */
   getDesign: () => RocketDesign;
+  /** Resumo da empresa do simulador, se houver. */
+  getCompany: () => unknown;
   onDesign: (design: RocketDesign) => void;
   onFlight: () => void;
   onRocket: (model: RocketModel) => void;
@@ -54,7 +56,7 @@ export function useSpaceAgent(hooks: AgentHooks) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: payload.slice(-40), design: hooksRef.current.getDesign() }),
+        body: JSON.stringify({ messages: payload.slice(-40), design: hooksRef.current.getDesign(), company: hooksRef.current.getCompany() }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {

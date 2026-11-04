@@ -309,3 +309,27 @@ chega à Lua na simulação. O app explica a diferença na aba Missão.
 Visualizar a órbita ao redor da Terra, motores de estágio superior misturados num
 mesmo estágio (como a Starship), comparar dois projetos lado a lado e um modo
 "desafio" com missões e orçamento para a turma.
+
+## 11. Versão 3 — empresa, tutorial e didática
+
+| Peça | Arquivo | O que faz |
+|---|---|---|
+| Simulador de empresa | `lib/company.ts` | Trimestres com 3 ações; caixa, valor, participação do fundador, reputação; desenvolvimento pago em parcelas; missões de clientes; contatos que viram ofertas (investidores, governo por marcos, banco); IPO; eventos de mercado; empréstimo de emergência uma vez e falência. Sorte com semente (reproduzível). |
+| Países | `lib/countries.ts` | 10 países com base de lançamento real (latitude real entra no voo: perto do Equador a Terra dá mais velocidade). Custos, investidores e incentivos por país são didáticos. |
+| Globo 3D | `components/company/Globe.tsx` | Mapa-múndi embutido (world-atlas), países com base destacados e clicáveis, marcadores nas bases, gira até o país escolhido. Funciona sem internet. |
+| Tutorial | `components/onboarding/Onboarding.tsx` | 7 cenas animadas (~1 min), barras de progresso, tocar nos lados para navegar, pausar, pular, narração por voz do navegador (pt-BR). |
+| Música | `lib/music.ts` | Trilha ambiente sintetizada ao vivo (Web Audio). Sem arquivo, sem direitos autorais. |
+| Didática | `lib/glossary.ts`, `components/ui/InfoTip.tsx` | Botão **?** em cada termo com explicação curta e exemplo real. |
+
+Como a empresa conversa com o resto:
+
+```
+Construtor ── projeto ──► desenvolvimento (custo = lib/economics, ajustado pelo país)
+     │                          │
+     └── missão do cliente ──► simulação de voo (latitude do país) ──► resultado
+                                                          │
+                     caixa, reputação, valor ◄────────────┘
+```
+
+A IA recebe um resumo da empresa (`summarizeCompany`) e aconselha com esses números,
+mas não executa ações da empresa: ela diz qual botão apertar.

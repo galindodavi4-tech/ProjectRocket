@@ -88,7 +88,9 @@ function orbitOf(x: number, y: number, vx: number, vy: number) {
   return { perigee: a * (1 - e) - R_EARTH, apogee: a * (1 + e) - R_EARTH };
 }
 
-export function simulateAscent(design: RocketDesign, analysis: DesignAnalysis): FlightResult {
+/** latitudeDeg: latitude da base. Perto do Equador, a rotação da Terra ajuda mais. */
+export function simulateAscent(design: RocketDesign, analysis: DesignAnalysis, opts: { latitudeDeg?: number } = {}): FlightResult {
+  const latitude = opts.latitudeDeg ?? 28.5;
   const stages: SimStage[] = analysis.stages.map((s) => ({
     dry: s.dryMassKg,
     prop: s.propellantMassKg - s.reserveKg,
@@ -116,7 +118,7 @@ export function simulateAscent(design: RocketDesign, analysis: DesignAnalysis): 
 
   let x = 0;
   let y = R_EARTH;
-  let vx = OMEGA * R_EARTH * Math.cos((28.5 * Math.PI) / 180);
+  let vx = OMEGA * R_EARTH * Math.cos((latitude * Math.PI) / 180);
   let vy = 0;
   let t = 0;
   let active = 0;

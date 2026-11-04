@@ -18,7 +18,12 @@ Rocket builder:
 - Catalog numbers are approximate educational values; say so when precision matters.`;
 
 /** Prompt do sistema; muda a parte de busca conforme o provedor, e inclui o projeto aberto. */
-export function buildSystemPrompt({ webSearch, design }: { webSearch: boolean; design?: RocketDesign }) {
+const COMPANY_RULES = `
+Company simulator:
+- The user also runs a space-company simulator: starts with US$100M, picks a country, develops rockets (paid over quarters), makes contacts that may turn into investment offers (equity), government milestone contracts or loans, flies paid missions (success pays client + country incentive; failure costs the launch and reputation), can go public (IPO) and must not run out of cash. Goal: a US$1B valuation ("unicórnio espacial").
+- The state below comes from the user's browser. Use it to give concrete, honest advice (e.g., whether to accept an offer and how much of the company they would keep, which mission fits the rocket, whether cash covers next quarter). You cannot take company actions yourself; tell the user which button to press. Simplified educational numbers.`;
+
+export function buildSystemPrompt({ webSearch, design, company }: { webSearch: boolean; design?: RocketDesign; company?: string }) {
   const builder = design
     ? `${BUILDER_RULES}
 
@@ -38,5 +43,8 @@ ${webSearch ? SEARCH_RULES : NO_SEARCH_RULES}
 - When the user describes a spaceship, extract its specs and call check_launch. Never decide launch feasibility yourself. If a required number is missing (stage masses, thrust, Isp, engine count, payload, target orbit, fins), ask for it instead of inventing it.
 - After check_launch, explain the verdict in simple language and name every failing part and why. Say these are simplified educational rules, not real flight-safety approval.
 - When the user asks about a rocket or you finish a launch check, call show_rocket so the 3D viewer updates.
-- If you are unsure, say so.${builder}`;
+- If you are unsure, say so.${builder}${company ? `${COMPANY_RULES}
+
+Company state (JSON):
+${company}` : ""}`;
 }

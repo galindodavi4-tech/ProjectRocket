@@ -47,9 +47,10 @@ export async function POST(req: Request) {
       const history = parsed.data.messages;
       const designParsed = RocketDesignSchema.safeParse(parsed.data.design);
       const design = designParsed.success ? designParsed.data : undefined;
+      const company = parsed.data.company ? JSON.stringify(parsed.data.company).slice(0, 6000) : undefined;
       try {
         if (provider.kind === "anthropic") {
-          await runAnthropicAgent(history, emit, { apiKey: provider.apiKey, model: provider.model, signal: req.signal, design });
+          await runAnthropicAgent(history, emit, { apiKey: provider.apiKey, model: provider.model, signal: req.signal, design, company });
         } else {
           await runOpenAICompatibleAgent(history, emit, {
             apiKey: provider.apiKey,
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
             baseURL: provider.baseURL,
             signal: req.signal,
             design,
+            company,
           });
         }
       } catch (err) {

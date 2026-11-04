@@ -12,7 +12,12 @@ Feito a partir do PRD *Space AI Agent*, com o design system “Turquesa”.
 - **Desempenho**: checagem do PRD, empuxo/peso, Δv por estágio, carga máxima para cada órbita e para onde vai a massa.
 - **Finanças**: custo por lançamento, custo por kg comparado ao mercado, custo de desenvolvimento e plano de negócio — preço, lançamentos por ano, investidores, contratos do governo, empréstimo e tempo de retorno.
 - **Missão**: simulação da subida segundo a segundo, com animação 3D, tela cheia, controle de velocidade (1×, 10×, 50×), trajetória, gráficos e linha do tempo.
-- **Agente**: "troque para metano", "deixe mais barato por kg", "lance o foguete" — ele muda o projeto e explica com os números do app.
+- **Agente**: "troque para metano", "deixe mais barato por kg", "lance o foguete", "o que minha empresa deve fazer?" — ele muda o projeto e explica com os números do app.
+- **Empresa** (modo 🏢): comece com US$ 100 milhões, dê um nome, escolha o país num **globo 3D** (10 países com base de lançamento real), desenvolva foguetes, faça contatos, aceite investidores, contratos do governo ou empréstimos, cumpra missões pagas (com incentivo do país), abra capital (IPO) e tente chegar a US$ 1 bilhão sem falir.
+- **Tutorial animado** de ~1 minuto na primeira visita (botão **?** no topo para rever), com narração opcional e **música** ambiente gerada ao vivo (botão 🎵).
+- **Botões ?** ao lado de cada termo explicam tudo em linguagem simples.
+
+Roteiro para apresentar em 6–7 minutos: [`docs/APRESENTACAO.md`](docs/APRESENTACAO.md).
 
 Os números são aproximados e educativos. Fontes em [`docs/DADOS.md`](docs/DADOS.md).
 
@@ -63,7 +68,7 @@ Depois de mudar uma variável na Vercel, faça um **Redeploy** para ela valer.
 ## Testar
 
 ```bash
-npm test           # checagem de lançamento, escolha da IA e loop do agente (Vitest)
+npm test           # checagem, construtor, voo, empresa, escolha da IA e loop do agente (Vitest)
 npm run typecheck
 npm run build
 ```

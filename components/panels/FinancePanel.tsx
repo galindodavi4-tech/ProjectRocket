@@ -6,6 +6,7 @@ import { usd } from "@/lib/economics";
 import { mass, num } from "@/lib/format";
 import { BarList } from "../ui/BarList";
 import { RangeField } from "../ui/RangeField";
+import { InfoTip } from "../ui/InfoTip";
 import { Stat } from "../ui/Stat";
 
 type Props = {
@@ -34,18 +35,18 @@ export function FinancePanel({ cost, capacityKg, plan, result, onPlan, onResetPr
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-2">
-        <Stat label="Custo por lançamento" value={usd(cost.perLaunchUsd)} />
-        <Stat label="Custo por kg" value={yourPerKg ? usd(yourPerKg) : "—"} sub={capacityKg > 0 ? `levando ${mass(capacityKg)}` : "sem capacidade"} />
+        <Stat label="Custo por lançamento" info="costPerLaunch" value={usd(cost.perLaunchUsd)} />
+        <Stat label="Custo por kg" info="costPerKg" value={yourPerKg ? usd(yourPerKg) : "—"} sub={capacityKg > 0 ? `levando ${mass(capacityKg)}` : "sem capacidade"} />
       </div>
 
       <div>
-        <h3 className="ds-label mb-3">De onde vem o custo</h3>
+        <h3 className="ds-label mb-3 flex items-center gap-1.5">De onde vem o custo <InfoTip term="costPerLaunch" /></h3>
         <BarList bars={cost.lines.map((l) => ({ label: l.label, value: l.usd, display: usd(l.usd), hint: l.hint }))} />
       </div>
 
       {yourPerKg && (
         <div>
-          <h3 className="ds-label mb-3">Preço por kg na órbita baixa</h3>
+          <h3 className="ds-label mb-3 flex items-center gap-1.5">Preço por kg na órbita baixa <InfoTip term="costPerKg" /></h3>
           <BarList tone="primary" bars={[
             ...MARKET.map((m) => ({ label: m.name, value: m.usdPerKg, display: usd(m.usdPerKg), hint: m.note })),
             { label: "Seu foguete (preço de venda)", value: result.pricePerKg ?? 0, display: result.pricePerKg ? usd(result.pricePerKg) : "—", highlight: true },
@@ -59,20 +60,20 @@ export function FinancePanel({ cost, capacityKg, plan, result, onPlan, onResetPr
           <h3 className="ds-label">Plano de negócio</h3>
           <button type="button" onClick={onResetPrice} className="text-xs text-primary hover:underline">Preço sugerido</button>
         </div>
-        <RangeField label="Preço cobrado por lançamento" value={plan.pricePerLaunchUsd} min={Math.max(200_000, cost.perLaunchUsd * 0.5)} max={cost.perLaunchUsd * 4}
+        <RangeField label="Preço cobrado por lançamento" info="price" value={plan.pricePerLaunchUsd} min={Math.max(200_000, cost.perLaunchUsd * 0.5)} max={cost.perLaunchUsd * 4}
           log format={usd} onChange={(x) => set({ pricePerLaunchUsd: x })}
           hint={`Margem de ${usd(result.marginPerLaunch)} por lançamento.`} />
-        <RangeField label="Lançamentos por ano" value={plan.launchesPerYear} min={1} max={60} step={1} format={(x) => `${num(x)} por ano`}
+        <RangeField label="Lançamentos por ano" info="launchesPerYear" value={plan.launchesPerYear} min={1} max={60} step={1} format={(x) => `${num(x)} por ano`}
           onChange={(x) => set({ launchesPerYear: x })} hint="O Falcon 9 passou de 100 lançamentos por ano; a maioria dos foguetes faz menos de 10." />
       </div>
 
       <div className="space-y-3 border-t border-line/40 pt-4">
-        <h3 className="ds-label">Quem paga o desenvolvimento ({usd(result.developmentUsd)})</h3>
-        <RangeField label={`Investidores · ${pct(plan.investorsPct)}`} value={plan.investorsPct} min={0} max={100} step={5} format={() => usd(result.investorsUsd)}
+        <h3 className="ds-label flex items-center gap-1.5">Quem paga o desenvolvimento ({usd(result.developmentUsd)}) <InfoTip term="development" /></h3>
+        <RangeField label={`Investidores · ${pct(plan.investorsPct)}`} info="investors" value={plan.investorsPct} min={0} max={100} step={5} format={() => usd(result.investorsUsd)}
           onChange={(x) => set({ investorsPct: x })} hint="Ficam com parte da empresa e esperam lucro." />
-        <RangeField label={`Contratos do governo · ${pct(plan.governmentPct)}`} value={plan.governmentPct} min={0} max={100} step={5} format={() => usd(result.governmentUsd)}
+        <RangeField label={`Contratos do governo · ${pct(plan.governmentPct)}`} info="government" value={plan.governmentPct} min={0} max={100} step={5} format={() => usd(result.governmentUsd)}
           onChange={(x) => set({ governmentPct: x })} hint="Pagos por marcos cumpridos, como o programa COTS da NASA. Não precisa devolver — mas atrasou, perde." />
-        <RangeField label={`Empréstimo · ${pct(plan.loanPct)}`} value={plan.loanPct} min={0} max={100} step={5} format={() => usd(result.loanUsd)}
+        <RangeField label={`Empréstimo · ${pct(plan.loanPct)}`} info="loan" value={plan.loanPct} min={0} max={100} step={5} format={() => usd(result.loanUsd)}
           onChange={(x) => set({ loanPct: x })} />
         {plan.loanPct > 0 && (
           <RangeField label="Juros do empréstimo" value={plan.loanRatePct} min={0} max={25} step={0.5} format={(x) => `${num(x, 1)}% ao ano`}
@@ -88,8 +89,8 @@ export function FinancePanel({ cost, capacityKg, plan, result, onPlan, onResetPr
       <div className="grid grid-cols-2 gap-2">
         <Stat label="Receita por ano" value={usd(result.revenuePerYear)} />
         <Stat label="Lucro por ano" value={usd(result.profitPerYear)} tone={result.profitPerYear > 0 ? "ok" : "bad"} />
-        <Stat label="Custos fixos por ano" value={usd(result.fixedCostsPerYear)} sub="equipe, fábrica, base" />
-        <Stat label="Retorno do investimento" value={result.paybackYears ? `${num(result.paybackYears, 1)} anos` : "nunca"}
+        <Stat label="Custos fixos por ano" info="fixedCosts" value={usd(result.fixedCostsPerYear)} sub="equipe, fábrica, base" />
+        <Stat label="Retorno do investimento" info="payback" value={result.paybackYears ? `${num(result.paybackYears, 1)} anos` : "nunca"}
           tone={result.verdict === "viable" ? "ok" : result.verdict === "risky" ? "warn" : "bad"} />
       </div>
 

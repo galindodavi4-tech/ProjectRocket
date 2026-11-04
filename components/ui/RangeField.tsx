@@ -1,6 +1,8 @@
 "use client";
 
 import { useId } from "react";
+import type { GlossaryKey } from "@/lib/glossary";
+import { InfoTip } from "./InfoTip";
 
 type Props = {
   label: string;
@@ -13,10 +15,11 @@ type Props = {
   format: (v: number) => string;
   onChange: (v: number) => void;
   hint?: string;
+  info?: GlossaryKey;
 };
 
 /** Rótulo, valor e trilho com o botão branco do kit. */
-export function RangeField({ label, value, min, max, step, log, format, onChange, hint }: Props) {
+export function RangeField({ label, value, min, max, step, log, format, onChange, hint, info }: Props) {
   const id = useId();
   const toPos = (v: number) => (log ? Math.log(v / min) / Math.log(max / min) : (v - min) / (max - min));
   const fromPos = (p: number) => (log ? min * Math.pow(max / min, p) : min + p * (max - min));
@@ -29,7 +32,10 @@ export function RangeField({ label, value, min, max, step, log, format, onChange
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="text-xs text-ink-muted">{label}</label>
+        <span className="flex items-center gap-1.5">
+          <label htmlFor={id} className="text-xs text-ink-muted">{label}</label>
+          {info && <InfoTip term={info} />}
+        </span>
         <span className="text-sm font-semibold tabular-nums text-ink">{format(value)}</span>
       </div>
       <div className="relative h-5">

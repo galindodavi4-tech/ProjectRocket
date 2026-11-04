@@ -71,3 +71,11 @@ Verificado nos testes (`tests/builder.test.ts`):
 | Atlas V 541 → GTO | ~6,5 t | ~8 t |
 | Falcon 9: custo por voo | ~US$ 49 mi descartável, ~US$ 22 mi reutilizado | ~US$ 50 mi / ~US$ 15–28 mi |
 | Electron: desenvolvimento | ~US$ 96 mi | ~US$ 100 mi |
+
+## Empresa (simplificações do jogo)
+
+- **Preço das missões:** órbita baixa ~US$ 6 mil/kg para cargas grandes, subindo para ~US$ 25–30 mil/kg em cargas pequenas, com mínimo de US$ 7,5 mi por lançamento dedicado (o preço do Electron). GTO ~US$ 18–28 mil/kg; Lua ~US$ 60 mil/kg. Inspirado nos preços por kg acima.
+- **Desenvolvimento:** o mesmo modelo do construtor (Electron ~US$ 100 mi, Falcon 9 ~US$ 390 mi), ajustado pelo custo do país; leva de 1 a 4 trimestres.
+- **Investidor-anjo, fundos, big techs, agência espacial e banco:** valores e chances são de jogo, inspirados em como Rocket Lab e o programa COTS da NASA se financiaram (fontes acima).
+- **Países:** bases e latitudes reais — Alcântara (2,3° S), Cabo Canaveral (28,5° N), Kourou (5,2° N), Wenchang (19,6° N), Sriharikota (13,7° N), Tanegashima (30,4° N), Mahia (39,3° S), SaxaVord (60,8° N), Naro (34,4° N), Bowen (19,9° S). Velocidade da rotação da Terra na base = 465 m/s × cos(latitude). Os fatores de custo, investidores e governo são didáticos.
+- **Mapa do globo:** [world-atlas](https://github.com/topojson/world-atlas) (Natural Earth, domínio público).

@@ -6,7 +6,9 @@ import type { DesignAnalysis, DesignStage, RocketDesign } from "@/lib/design";
 import { usd } from "@/lib/economics";
 import { force, mass, num, ORBIT_SHORT } from "@/lib/format";
 import { PRESETS, STARTER_DESIGN } from "@/lib/presets";
+import type { GlossaryKey } from "@/lib/glossary";
 import { Chip } from "../ui/Chip";
+import { InfoTip } from "../ui/InfoTip";
 import { PlusIcon } from "../ui/icons";
 import { RangeField } from "../ui/RangeField";
 import { Segmented } from "../ui/Segmented";
@@ -27,11 +29,11 @@ type Props = {
 const PROPELLANT_OPTIONS = (Object.keys(PROPELLANTS) as PropellantId[]).map((id) => ({ value: id, label: PROPELLANTS[id].short, hint: PROPELLANTS[id].pros }));
 const MATERIAL_SHORT: Record<MaterialId, string> = { aluminum: "Alumínio", "al-li": "Al-Li", steel: "Aço inox", carbon: "Carbono" };
 
-function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
+function Section({ title, children, aside, info }: { title: string; children: React.ReactNode; aside?: React.ReactNode; info?: GlossaryKey }) {
   return (
     <section className="border-t border-line/40 pt-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="ds-label">{title}</h3>
+        <h3 className="ds-label flex items-center gap-1.5">{title}{info && <InfoTip term={info} />}</h3>
         {aside}
       </div>
       <div className="space-y-3">{children}</div>
@@ -77,31 +79,31 @@ function StageEditor({ stage, index, analysis, onChange, onRemove }: {
       </div>
       <div className="space-y-3">
         <div>
-          <p className="mb-1 text-xs text-ink-muted">Propelente</p>
+          <p className="mb-1 flex items-center gap-1.5 text-xs text-ink-muted">Propelente <InfoTip term="propellant" /></p>
           <Segmented size="sm" label={`Propelente do ${index + 1}º estágio`} value={engine.propellant} options={PROPELLANT_OPTIONS}
             onChange={(p) => onChange({ ...stage, engineId: pickEngine(p, index > 0) })} />
         </div>
-        <SelectField label="Motor" value={engine.id} options={options} onChange={(id) => onChange({ ...stage, engineId: id })} />
+        <SelectField label="Motor" info="engine" value={engine.id} options={options} onChange={(id) => onChange({ ...stage, engineId: id })} />
         <p className="text-[11px] leading-relaxed text-ink-faint">
           {engine.flies}. {engine.note} Custa ~{usd(engine.costUsd)} cada{engine.estimated ? " (estimativa)" : ""}.
           {index === 0 && engine.vacuumOnly && <span className="text-coral"> Motor de vácuo quase não empurra no nível do mar!</span>}
         </p>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs text-ink-muted">Quantidade de motores</span>
+          <span className="flex items-center gap-1.5 text-xs text-ink-muted">Quantidade de motores <InfoTip term="engineCount" /></span>
           <Stepper label="motores" value={stage.engineCount} min={1} max={40} onChange={(n) => onChange({ ...stage, engineCount: n })} />
         </div>
-        <RangeField label="Propelente no tanque" value={stage.propellantMassKg} min={1_000} max={3_500_000} log format={mass}
+        <RangeField label="Propelente no tanque" info="propellantMass" value={stage.propellantMassKg} min={1_000} max={3_500_000} log format={mass}
           onChange={(v) => onChange({ ...stage, propellantMassKg: v })} />
         <div>
-          <p className="mb-1 text-xs text-ink-muted">Material da estrutura</p>
+          <p className="mb-1 flex items-center gap-1.5 text-xs text-ink-muted">Material da estrutura <InfoTip term="material" /></p>
           <Segmented size="sm" label={`Material do ${index + 1}º estágio`} value={stage.material as MaterialId}
             options={(Object.keys(MATERIALS) as MaterialId[]).map((m) => ({ value: m, label: MATERIAL_SHORT[m], hint: MATERIALS[m].note }))}
             onChange={(m) => onChange({ ...stage, material: m })} />
         </div>
         <dl className="grid grid-cols-3 gap-2 text-[11px]">
-          <div><dt className="text-ink-faint">Empuxo</dt><dd className={`font-semibold ${engines?.status === "fail" ? "text-danger" : ""}`}>{force(index === 0 ? info.thrustSlN : info.thrustVacN)}</dd></div>
-          <div><dt className="text-ink-faint">Δv</dt><dd className="font-semibold">{num(dv)} m/s</dd></div>
-          <div><dt className="text-ink-faint">Propelente</dt><dd className={`font-semibold ${tank?.status === "fail" ? "text-danger" : ""}`}>{num(frac * 100)}%</dd></div>
+          <div><dt className="flex items-center gap-1 text-ink-faint">Empuxo <InfoTip term="twr" /></dt><dd className={`font-semibold ${engines?.status === "fail" ? "text-danger" : ""}`}>{force(index === 0 ? info.thrustSlN : info.thrustVacN)}</dd></div>
+          <div><dt className="flex items-center gap-1 text-ink-faint">Δv <InfoTip term="deltaV" /></dt><dd className="font-semibold">{num(dv)} m/s</dd></div>
+          <div><dt className="flex items-center gap-1 text-ink-faint">Fração <InfoTip term="propellantFraction" /></dt><dd className={`font-semibold ${tank?.status === "fail" ? "text-danger" : ""}`}>{num(frac * 100)}%</dd></div>
         </dl>
       </div>
     </div>
@@ -126,7 +128,7 @@ export function BuilderPanel({ design, analysis, onChange, saved, onSave, onRemo
   return (
     <fieldset disabled={disabled} className="space-y-4 disabled:opacity-60">
       <div>
-        <p className="mb-2 text-xs text-ink-muted">Começar de um foguete real</p>
+        <p className="mb-2 flex items-center gap-1.5 text-xs text-ink-muted">Começar de um foguete real <InfoTip term="presets" /></p>
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((p) => (
             <Chip key={p.id} onClick={() => { onChange(structuredClone(p.design)); setPresetNote(p.real); }}>{p.label}</Chip>
@@ -152,10 +154,10 @@ export function BuilderPanel({ design, analysis, onChange, saved, onSave, onRemo
             ))}
           </div>
         )}
-        <RangeField label="Diâmetro" value={design.diameterM} min={0.6} max={12} step={0.1} format={(v) => `${num(v, 1)} m`} onChange={(v) => set({ diameterM: v })} />
+        <RangeField label="Diâmetro" info="diameter" value={design.diameterM} min={0.6} max={12} step={0.1} format={(v) => `${num(v, 1)} m`} onChange={(v) => set({ diameterM: v })} />
       </Section>
 
-      <Section title="Estágios" aside={<span className="text-xs text-ink-faint">{design.stages.length} de 3</span>}>
+      <Section title="Estágios" info="stage" aside={<span className="text-xs text-ink-faint">{design.stages.length} de 3</span>}>
         {design.stages.map((s, i) => (
           <StageEditor key={i} stage={s} index={i} analysis={analysis} onChange={(n) => setStage(i, n)}
             onRemove={design.stages.length > 1 ? () => set({ stages: design.stages.filter((_, j) => j !== i) }) : undefined} />
@@ -168,7 +170,7 @@ export function BuilderPanel({ design, analysis, onChange, saved, onSave, onRemo
         )}
       </Section>
 
-      <Section title="Propulsores laterais">
+      <Section title="Propulsores laterais" info="boosters">
         <Segmented label="Propulsores laterais" value={design.boosters?.boosterId ?? "none"}
           options={[{ value: "none", label: "Nenhum" }, ...BOOSTERS.map((b) => ({ value: b.id, label: b.name, hint: `${b.flies} · ${num(b.thrustSlKN)} kN cada` }))]}
           onChange={(id) => set({ boosters: id === "none" ? null : { boosterId: id, count: design.boosters?.count ?? 2 } })} />
@@ -180,7 +182,7 @@ export function BuilderPanel({ design, analysis, onChange, saved, onSave, onRemo
         <p className="text-[11px] text-ink-faint">Combustível sólido: muito empuxo na decolagem, queimam ~2 minutos e se soltam.</p>
       </Section>
 
-      <Section title="Estabilidade">
+      <Section title="Estabilidade" info="stability">
         <Segmented label="Estabilidade" value={design.stability}
           options={[{ value: "fins", label: "Aletas" }, { value: "gimbal", label: "Gimbal" }, { value: "none", label: "Nenhuma" }]}
           onChange={(v) => set({ stability: v })} />
@@ -191,7 +193,7 @@ export function BuilderPanel({ design, analysis, onChange, saved, onSave, onRemo
         </p>
       </Section>
 
-      <Section title="Reutilização do 1º estágio">
+      <Section title="Reutilização do 1º estágio" info="reuse">
         <Segmented label="Reutilização" value={design.reuse}
           options={(Object.keys(REUSE) as (keyof typeof REUSE)[]).map((r) => ({ value: r, label: REUSE[r].name.replace("Pouso em balsa no mar", "Balsa no mar") }))}
           onChange={(v) => set({ reuse: v, reuseFlights: v === "none" ? 1 : Math.max(design.reuseFlights, 10) })} />
@@ -202,11 +204,11 @@ export function BuilderPanel({ design, analysis, onChange, saved, onSave, onRemo
         )}
       </Section>
 
-      <Section title="Missão">
+      <Section title="Missão" info="orbit">
         <Segmented label="Destino" value={design.targetOrbit}
           options={[{ value: "LEO", label: "Órbita baixa" }, { value: "GTO", label: "GTO" }, { value: "Moon", label: "Lua" }]}
           onChange={(v) => set({ targetOrbit: v })} />
-        <RangeField label="Carga útil" value={Math.max(10, design.payloadMassKg)} min={10} max={200_000} log format={mass}
+        <RangeField label="Carga útil" info="payload" value={Math.max(10, design.payloadMassKg)} min={10} max={200_000} log format={mass}
           onChange={(v) => set({ payloadMassKg: v })}
           hint={capacity > 0 ? `Este foguete leva até ${mass(capacity)} para ${ORBIT_SHORT[design.targetOrbit]}.` : "Com estas escolhas, nada chega a esse destino."} />
       </Section>

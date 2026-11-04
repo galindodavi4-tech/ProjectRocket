@@ -10,7 +10,7 @@ import { boosterOf, type DesignAnalysis, type RocketDesign } from "./design";
 export const AVIONICS_COST_PER_STAGE = 1_000_000;
 /** Coifa de ~5 m de diâmetro custa ~US$ 6 mi; escala com a área. */
 export const FAIRING_COST_REF = 6_000_000;
-export const LAUNCH_OPS_BASE = 3_000_000;
+export const LAUNCH_OPS_BASE = 1_500_000;
 export const LAUNCH_OPS_SHARE = 0.05;
 export const REFURB_SHARE = 0.05;
 

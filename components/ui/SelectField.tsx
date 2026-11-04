@@ -1,15 +1,20 @@
 "use client";
 
 import { useId } from "react";
+import type { GlossaryKey } from "@/lib/glossary";
+import { InfoTip } from "./InfoTip";
 
 type Option = { value: string; label: string; group?: string };
 
-export function SelectField({ label, value, options, onChange }: { label: string; value: string; options: Option[]; onChange: (v: string) => void }) {
+export function SelectField({ label, value, options, onChange, info }: { label: string; value: string; options: Option[]; onChange: (v: string) => void; info?: GlossaryKey }) {
   const id = useId();
   const groups = [...new Set(options.map((o) => o.group ?? ""))];
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs text-ink-muted">{label}</label>
+      <span className="mb-1 flex items-center gap-1.5">
+        <label htmlFor={id} className="text-xs text-ink-muted">{label}</label>
+        {info && <InfoTip term={info} />}
+      </span>
       <select
         id={id}
         value={value}

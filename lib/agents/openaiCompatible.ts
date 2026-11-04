@@ -25,11 +25,11 @@ type PendingCall = { id: string; name: string; args: string };
 export async function runOpenAICompatibleAgent(
   history: ChatMessage[],
   emit: Emit,
-  opts: { apiKey: string; model: string; baseURL?: string; signal?: AbortSignal; design?: RocketDesign },
+  opts: { apiKey: string; model: string; baseURL?: string; signal?: AbortSignal; design?: RocketDesign; company?: string },
 ) {
   const client = new OpenAI({ apiKey: opts.apiKey, baseURL: opts.baseURL });
   const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: buildSystemPrompt({ webSearch: false, design: opts.design }) },
+    { role: "system", content: buildSystemPrompt({ webSearch: false, design: opts.design, company: opts.company }) },
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
   const state: ToolState = { design: opts.design };
