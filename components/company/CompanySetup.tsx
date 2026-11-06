@@ -37,20 +37,26 @@ function Meter({ label, value, invert }: { label: string; value: number; invert?
 type Props = {
   onFound: (name: string, countryId: CountryId, fixedLuck: boolean) => void;
   onCancel: () => void;
+  /** Nome da empresa atual, se houver: ela será substituída ao fundar outra. */
+  replacing?: string;
 };
 
 /** Fundar a empresa: nome, país no globo e as consequências da escolha. */
-export function CompanySetup({ onFound, onCancel }: Props) {
+export function CompanySetup({ onFound, onCancel, replacing }: Props) {
   const [name, setName] = useState("");
   const [country, setCountry] = useState<CountryId | null>("BR");
   const [fixedLuck, setFixedLuck] = useState(true);
+  const [hovered, setHovered] = useState<string | null>(null);
   const c = country ? countryById(country) : null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-bg-deep/95 backdrop-blur-sm">
       <div className="mx-auto grid min-h-full max-w-6xl content-center gap-5 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="relative h-[46dvh] min-h-[320px] overflow-hidden rounded-[var(--radius-card)] bg-bg lg:h-[78dvh]">
-          <Globe selected={country} onPick={setCountry} />
+          <Globe selected={country} onPick={setCountry} onHover={setHovered} />
+          <p className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-bg-deep/80 px-3 py-1 text-sm font-semibold text-ink">
+            {hovered ?? (country ? `${flag(country)} ${countryById(country).name}` : "Escolha um país")}
+          </p>
           <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-bg-deep/70 px-3 py-1 text-[11px] text-ink-muted">
             Arraste para girar · clique num país destacado
           </p>
@@ -61,6 +67,11 @@ export function CompanySetup({ onFound, onCancel }: Props) {
             <p className="ds-label">Simulador de empresa</p>
             <h2 className="mt-1 text-2xl font-semibold">Crie sua empresa espacial</h2>
             <p className="mt-1 text-sm text-ink-muted">Você começa com <strong className="text-ink">US$ 100 milhões</strong>. O resto depende das suas decisões.</p>
+            {replacing && (
+              <p className="mt-2 rounded-xl bg-peach/10 px-3 py-2 text-xs text-ink ring-1 ring-peach/40">
+                Ao fundar, a <strong>{replacing}</strong> será fechada e substituída. Clique em <em>Voltar</em> para continuar com ela.
+              </p>
+            )}
           </div>
 
           <div>

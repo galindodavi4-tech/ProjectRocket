@@ -1,8 +1,8 @@
 "use client";
 
-import { Html, OrbitControls, Stars } from "@react-three/drei";
+import { OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, CanvasTexture, SRGBColorSpace, type Group } from "three";
 import { drawShape, shapes, type Shape } from "@/lib/worldShapes";
 import { COUNTRIES, type Country, type CountryId } from "@/lib/countries";
@@ -99,8 +99,13 @@ function toVec(lat: number, lon: number, r = R): [number, number, number] {
   return [-r * Math.cos(phi) * Math.sin(theta), r * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta)];
 }
 
-function Marker({ country, active, onPick }: { country: Country; active: boolean; onPick: (id: CountryId) => void }) {
-  const [hover, setHover] = useState(false);
+type HoverFn = (name: string | null) => void;
+
+/**
+ * Marcador da base de lançamento. O nome do país aparece num rótulo fora do 3D
+ * (o rótulo HTML dentro da cena quebrava ao fechar a tela).
+ */
+function Marker({ country, active, onPick, onHover }: { country: Country; active: boolean; onPick: (id: CountryId) => void; onHover: HoverFn }) {
   const pos = toVec(country.lat, country.lon, R * 1.005);
   const ring = useRef<Group>(null);
   useFrame(({ clock }) => {
@@ -118,11 +123,11 @@ function Marker({ country, active, onPick }: { country: Country; active: boolean
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
-          setHover(true);
+          onHover(country.name);
           document.body.style.cursor = "pointer";
         }}
         onPointerOut={() => {
-          setHover(false);
+          onHover(null);
           document.body.style.cursor = "";
         }}
       >
@@ -135,16 +140,11 @@ function Marker({ country, active, onPick }: { country: Country; active: boolean
           <meshBasicMaterial color={active ? "#ffc29a" : "#6eeadf"} transparent opacity={0.25} blending={AdditiveBlending} depthWrite={false} />
         </mesh>
       </group>
-      {(hover || active) && (
-        <Html center distanceFactor={6} style={{ pointerEvents: "none" }} position={[0, 0.14, 0]}>
-          <span className="rounded-lg bg-bg-deep/85 px-2 py-1 text-xs font-semibold whitespace-nowrap text-ink">{country.name}</span>
-        </Html>
-      )}
     </group>
   );
 }
 
-function Earth({ selected, onPick }: { selected: CountryId | null; onPick: (id: CountryId) => void }) {
+function Earth({ selected, onPick, onHover }: { selected: CountryId | null; onPick: (id: CountryId) => void; onHover: HoverFn }) {
   const { texture, countryAtUv } = useMaps(selected);
   const tilt = useRef<Group>(null);
   const spin = useRef<Group>(null);
@@ -186,7 +186,7 @@ function Earth({ selected, onPick }: { selected: CountryId | null; onPick: (id: 
           {texture && <meshStandardMaterial map={texture} roughness={0.85} metalness={0.05} emissive="#0a2f3a" emissiveIntensity={0.35} />}
         </mesh>
         {COUNTRIES.map((c) => (
-          <Marker key={c.id} country={c} active={c.id === selected} onPick={onPick} />
+          <Marker key={c.id} country={c} active={c.id === selected} onPick={onPick} onHover={onHover} />
         ))}
       </group>
       <mesh scale={1.06}>
@@ -198,14 +198,14 @@ function Earth({ selected, onPick }: { selected: CountryId | null; onPick: (id: 
 }
 
 /** Globo 3D: arraste para girar; clique num país destacado (ou no marcador da base). */
-export function Globe({ selected, onPick }: { selected: CountryId | null; onPick: (id: CountryId) => void }) {
+export function Globe({ selected, onPick, onHover = () => {} }: { selected: CountryId | null; onPick: (id: CountryId) => void; onHover?: HoverFn }) {
   return (
     <Canvas camera={{ position: [0, 0, 4.6], fov: 45 }} dpr={[1, 2]} className="!touch-none">
       <ambientLight intensity={0.9} />
       <directionalLight position={[4, 3, 5]} intensity={1.4} />
       <pointLight position={[-5, -2, -3]} intensity={20} color="#2ee6d6" />
       <Stars radius={40} depth={20} count={1500} factor={2.5} fade speed={0.4} />
-      <Earth selected={selected} onPick={onPick} />
+      <Earth selected={selected} onPick={onPick} onHover={onHover} />
       <OrbitControls enablePan={false} enableZoom minDistance={3.2} maxDistance={7} rotateSpeed={0.6} />
     </Canvas>
   );

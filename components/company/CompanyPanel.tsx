@@ -65,9 +65,15 @@ export function CompanyPanel(p: Props) {
           <p className="truncate text-lg font-semibold">{flag(c.countryId)} {c.name}</p>
           <p className="text-xs text-ink-muted">{quarterLabel(c.quarter)} · {country.site}</p>
         </div>
-        <span className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${c.status === "public" ? "bg-peach/20 text-peach" : "bg-primary/15 text-primary"}`}>
-          {c.status === "public" ? "Capital aberto" : "Privada"} <InfoTip term="privatePublic" />
-        </span>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${c.status === "public" ? "bg-peach/20 text-peach" : "bg-primary/15 text-primary"}`}>
+            {c.status === "public" ? "Capital aberto" : "Privada"} <InfoTip term="privatePublic" />
+          </span>
+          <button type="button" onClick={p.onRestart} disabled={p.busy}
+            className="rounded-full border border-line px-3 py-1 text-[11px] font-semibold text-ink-muted transition hover:border-primary hover:text-ink disabled:opacity-40">
+            + Nova empresa
+          </button>
+        </div>
       </div>
 
       {c.bankrupt && (
@@ -236,7 +242,7 @@ export function CompanyPanel(p: Props) {
             </li>
           ))}
         </ol>
-        <button type="button" onClick={p.onRestart} className="text-[11px] text-ink-faint hover:text-coral">Fechar a empresa e começar outra</button>
+        <button type="button" onClick={p.onRestart} className="text-[11px] text-ink-faint hover:text-coral">+ Criar nova empresa</button>
       </Block>
     </div>
   );

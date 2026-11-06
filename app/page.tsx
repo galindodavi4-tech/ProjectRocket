@@ -287,6 +287,7 @@ export default function Home() {
       )}
       {showSetup && (
         <CompanySetup
+          replacing={company?.name}
           onCancel={() => {
             setShowSetup(false);
             if (!company) setMode("lab");
