@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { bestVoice, pauseSpeaking, portugueseVoices, resumeSpeaking, speak as narrate, speechSeconds, stopSpeaking, voiceGender, whenVoicesReady } from "@/lib/narrator";
 
 /**
  * Tutorial de abertura em cenas animadas, como a primeira configuração de um
@@ -46,7 +47,7 @@ const SCENES: Scene[] = [
   {
     kicker: "Bem-vindo",
     title: "Space Agent",
-    text: "Aqui você inventa um foguete, testa se ele chega ao espaço e cria a empresa que vai vendê-lo. Tudo com dados reais e uma inteligência artificial para ajudar.",
+    text: "Aqui você inventa um foguete, testa se ele chega ao espaço e cria uma empresa para vendê-lo. Com dados reais e uma IA para ajudar.",
     art: () => (
       <div className="relative h-full w-full overflow-hidden">
         <div className="absolute bottom-0 left-1/2 h-[70%] w-24 -translate-x-1/2" style={{ animation: "ob-rise 7s ease-in 0.6s forwards" }}>
@@ -58,7 +59,7 @@ const SCENES: Scene[] = [
   {
     kicker: "Passo 1",
     title: "Construa",
-    text: "Escolha motores de verdade, o combustível, o material e quantos estágios. O app calcula o peso, a força e a velocidade que o seu foguete consegue.",
+    text: "Escolha motores de verdade, o combustível e o material. O app calcula o peso, a força e a velocidade do seu foguete.",
     art: () => (
       <div className="flex h-full items-end justify-center gap-10 pb-4">
         <div className="flex w-24 flex-col items-stretch">
@@ -80,7 +81,7 @@ const SCENES: Scene[] = [
   {
     kicker: "Passo 2",
     title: "Lance",
-    text: "Aperte lançar e veja a subida segundo a segundo: gravidade, resistência do ar e separação dos estágios. Se algo estiver errado, o foguete falha, e você descobre por quê.",
+    text: "Aperte lançar e veja a subida, segundo a segundo. Se algo estiver errado, o foguete falha, e você descobre por quê.",
     art: () => (
       <svg viewBox="0 0 400 220" className="h-full w-full overflow-hidden" overflow="hidden" aria-hidden>
         <defs>
@@ -109,7 +110,7 @@ const SCENES: Scene[] = [
   {
     kicker: "Passo 3",
     title: "Faça as contas",
-    text: "Quanto custa cada lançamento? Quanto você cobra por quilo? Compare com o Falcon 9 e descubra se o seu negócio se paga.",
+    text: "Veja quanto custa cada lançamento, compare com foguetes de verdade e descubra se o negócio dá lucro.",
     art: () => (
       <div className="flex h-full items-end justify-center gap-6 pb-6">
         {[["Electron", 92, "#a99bff"], ["Ariane 6", 52, "#6eeadf"], ["Falcon 9", 22, "#14b8a6"], ["Você?", 34, "#ffc29a"]].map(([label, h, color], i) => (
@@ -125,7 +126,7 @@ const SCENES: Scene[] = [
   {
     kicker: "Passo 4",
     title: "Crie sua empresa",
-    text: "Comece com 100 milhões de dólares. Escolha o país no globo, faça contatos, aceite investidores, cumpra missões e, quem sabe, abra capital na bolsa.",
+    text: "Comece com 100 milhões de dólares. Escolha o país no globo, conquiste investidores e cumpra missões.",
     art: () => (
       <div className="flex h-full items-center justify-center gap-8">
         <div className="relative size-40 rounded-full bg-[radial-gradient(circle_at_35%_30%,#2b7a72,#0a2a35)] shadow-[0_0_60px_rgba(46,230,214,.35)]">
@@ -146,7 +147,7 @@ const SCENES: Scene[] = [
   {
     kicker: "Passo 5",
     title: "Pergunte à IA",
-    text: "O agente de inteligência artificial explica, dá conselhos e até muda e lança o seu foguete. Mas os números vêm sempre dos cálculos: a IA não chuta.",
+    text: "O agente de IA explica tudo e até muda e lança o seu foguete. Mas quem faz as contas é o código.",
     art: () => (
       <div className="mx-auto flex h-full max-w-md flex-col justify-center gap-3 text-sm">
         <p className="ob-fade self-end rounded-2xl rounded-br-md border border-primary/40 bg-surface-3 px-4 py-2" style={delay(0.4)}>Como deixo meu foguete mais barato?</p>
@@ -159,7 +160,7 @@ const SCENES: Scene[] = [
   {
     kicker: "Sua missão",
     title: "Chegue a US$ 1 bilhão",
-    text: "Construa um foguete que funcione, crie uma empresa que dê lucro e transforme ela num unicórnio espacial. Na dúvida, clique no ponto de interrogação ao lado de cada coisa.",
+    text: "Sua meta: uma empresa espacial de 1 bilhão de dólares. Na dúvida, clique no ponto de interrogação.",
     art: () => (
       <div className="flex h-full items-center justify-center">
         <div className="text-center" style={{ animation: "ob-float 3s ease-in-out infinite" }}>
@@ -173,8 +174,12 @@ const SCENES: Scene[] = [
   },
 ];
 
-/** Tempo de cada cena: dá para ler (ou ouvir) o texto com calma. */
-const durationOf = (s: Scene) => Math.max(7, s.text.split(/\s+/).length / 2.6 + 1.5);
+/** Sem voz: tempo para ler a cena com calma. */
+const readSeconds = (s: Scene) => Math.max(6, s.text.length / 16 + 1.5);
+const spoken = (s: Scene) => `${s.title}. ${s.text}`;
+/** Pausa depois da última palavra antes de trocar de cena. */
+const AFTER_VOICE = 0.8;
+const VOICE_KEY = "space-agent:voice:v1";
 
 type Props = {
   onFinish: (next: "company" | "lab") => void;
@@ -186,25 +191,50 @@ export function Onboarding({ onFinish, musicOn, onMusic }: Props) {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [narrate, setNarrate] = useState(true);
+  const [voiceOn, setVoiceOn] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceName, setVoiceName] = useState<string | null>(null);
   const elapsed = useRef(0);
+  // Momento (em segundos de cena) em que a voz terminou; null = ainda falando.
+  const voiceDoneAt = useRef<number | null>(null);
   const last = SCENES.length - 1;
   const scene = SCENES[index];
 
-  const speak = useCallback(
-    (text: string) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-      window.speechSynthesis.cancel();
-      if (!narrate) return;
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "pt-BR";
-      u.rate = 1.05;
-      const voice = window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith("pt-br")) ?? window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith("pt"));
-      if (voice) u.voice = voice;
-      window.speechSynthesis.speak(u);
+  useEffect(
+    () =>
+      whenVoicesReady(() => {
+        const list = portugueseVoices();
+        setVoices(list);
+        let saved: string | null = null;
+        try {
+          saved = localStorage.getItem(VOICE_KEY);
+        } catch {
+          /* sem armazenamento */
+        }
+        setVoiceName((cur) => cur ?? (list.find((v) => v.name === saved)?.name ?? bestVoice(list)?.name ?? null));
+      }),
+    [],
+  );
+
+  const voice = voices.find((v) => v.name === voiceName) ?? null;
+
+  const say = useCallback(
+    (i: number) => {
+      voiceDoneAt.current = null;
+      if (!voiceOn) {
+        stopSpeaking();
+        voiceDoneAt.current = 0;
+        return;
+      }
+      narrate(spoken(SCENES[i]), {
+        voice,
+        onEnd: () => {
+          voiceDoneAt.current = elapsed.current;
+        },
+      });
     },
-    [narrate],
+    [voiceOn, voice],
   );
 
   const go = useCallback(
@@ -213,12 +243,12 @@ export function Onboarding({ onFinish, musicOn, onMusic }: Props) {
       elapsed.current = 0;
       setProgress(0);
       setIndex(next);
-      speak(`${SCENES[next].title}. ${SCENES[next].text}`);
+      say(next);
     },
-    [last, speak],
+    [last, say],
   );
 
-  // Relógio da cena.
+  // Relógio da cena: com voz, avança logo depois da última palavra; sem voz, pelo tempo de leitura.
   useEffect(() => {
     if (!started || paused) return;
     let raf = 0;
@@ -226,9 +256,14 @@ export function Onboarding({ onFinish, musicOn, onMusic }: Props) {
     const tick = (now: number) => {
       elapsed.current += (now - prev) / 1000;
       prev = now;
-      const d = durationOf(SCENES[index]);
-      setProgress(Math.min(1, elapsed.current / d));
-      if (elapsed.current >= d && index < last) {
+      const s = SCENES[index];
+      const expected = voiceOn ? speechSeconds(spoken(s)) + AFTER_VOICE : readSeconds(s);
+      // Segurança: se o navegador não avisar o fim da fala, segue depois de um tempo folgado.
+      if (voiceOn && voiceDoneAt.current === null && elapsed.current > expected * 1.8 + 3) voiceDoneAt.current = elapsed.current;
+      const doneAt = voiceDoneAt.current;
+      const finished = voiceOn ? doneAt !== null && elapsed.current >= doneAt + AFTER_VOICE : elapsed.current >= expected;
+      setProgress(finished ? 1 : Math.min(0.97, elapsed.current / expected));
+      if (finished && index < last) {
         go(index + 1);
         return;
       }
@@ -236,27 +271,45 @@ export function Onboarding({ onFinish, musicOn, onMusic }: Props) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [started, paused, index, last, go]);
+  }, [started, paused, index, last, go, voiceOn]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (paused) window.speechSynthesis.pause();
-    else window.speechSynthesis.resume();
+    if (paused) pauseSpeaking();
+    else resumeSpeaking();
   }, [paused]);
 
-  useEffect(() => () => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
-  }, []);
+  useEffect(() => () => stopSpeaking(), []);
 
   const finish = (next: "company" | "lab") => {
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopSpeaking();
     onFinish(next);
   };
 
   const begin = () => {
     setStarted(true);
     onMusic(musicOn);
-    speak(`${SCENES[0].title}. ${SCENES[0].text}`);
+    say(0);
+  };
+
+  const toggleVoice = () => {
+    const on = !voiceOn;
+    setVoiceOn(on);
+    if (!on) {
+      stopSpeaking();
+      voiceDoneAt.current = 0;
+    } else {
+      voiceDoneAt.current = null;
+      narrate(spoken(SCENES[index]), { voice, onEnd: () => (voiceDoneAt.current = elapsed.current) });
+    }
+  };
+
+  const pickVoice = (name: string) => {
+    setVoiceName(name);
+    try {
+      localStorage.setItem(VOICE_KEY, name);
+    } catch {
+      /* sem armazenamento */
+    }
   };
 
   return (
@@ -273,9 +326,26 @@ export function Onboarding({ onFinish, musicOn, onMusic }: Props) {
             ▶ Começar
           </button>
           <div className="ob-fade mt-6 flex flex-wrap justify-center gap-4 text-xs text-ink-muted" style={delay(1.1)}>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={narrate} onChange={(e) => setNarrate(e.target.checked)} className="accent-[var(--color-primary)]" /> Narração em voz</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={voiceOn} onChange={(e) => setVoiceOn(e.target.checked)} className="accent-[var(--color-primary)]" /> Narração em voz</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={musicOn} onChange={(e) => onMusic(e.target.checked)} className="accent-[var(--color-primary)]" /> Música</label>
           </div>
+          {voiceOn && voices.length > 0 && (
+            <div className="ob-fade mt-4 flex flex-wrap items-center justify-center gap-2 text-xs" style={delay(1.2)}>
+              <label htmlFor="ob-voice" className="text-ink-muted">Voz:</label>
+              <select id="ob-voice" value={voiceName ?? ""} onChange={(e) => pickVoice(e.target.value)}
+                className="max-w-60 rounded-full border border-line bg-surface/70 px-3 py-1.5 text-ink focus:border-primary focus:outline-none">
+                {voices.map((v) => (
+                  <option key={v.name} value={v.name}>{v.name.replace(/^Microsoft |^Google /, "").replace(/ - Portuguese.*$/, "")} {voiceGender(v) === "male" ? "· masculina" : voiceGender(v) === "female" ? "· feminina (tom grave)" : ""}</option>
+                ))}
+              </select>
+              <button type="button" onClick={() => narrate("Olá! Eu sou o narrador do Space Agent.", { voice })} className="rounded-full bg-surface/70 px-3 py-1.5 hover:text-primary">Ouvir</button>
+            </div>
+          )}
+          {voiceOn && voices.length > 0 && !voices.some((v) => voiceGender(v) === "male") && (
+            <p className="ob-fade mt-2 max-w-sm text-[11px] text-ink-faint" style={delay(1.25)}>
+              Este navegador não tem voz masculina em português; usamos a disponível com tom mais grave. No Microsoft Edge (Windows) aparece a voz &quot;Antonio&quot;, masculina e natural.
+            </p>
+          )}
           <button type="button" onClick={() => finish("lab")} className="ob-fade mt-6 text-xs text-ink-faint hover:text-ink" style={delay(1.3)}>Pular tutorial</button>
         </div>
       ) : (
@@ -291,7 +361,7 @@ export function Onboarding({ onFinish, musicOn, onMusic }: Props) {
             <span className="text-ink-faint">{index + 1} / {SCENES.length}</span>
             <div className="flex gap-2">
               <button type="button" onClick={() => setPaused((p) => !p)} className="rounded-full bg-surface/70 px-3 py-1.5 hover:text-primary">{paused ? "▶ Continuar" : "❚❚ Pausar"}</button>
-              <button type="button" onClick={() => { setNarrate((n) => !n); if ("speechSynthesis" in window) window.speechSynthesis.cancel(); }} className="rounded-full bg-surface/70 px-3 py-1.5 hover:text-primary">{narrate ? "🔊 Voz" : "🔇 Voz"}</button>
+              <button type="button" onClick={toggleVoice} className="rounded-full bg-surface/70 px-3 py-1.5 hover:text-primary">{voiceOn ? "🔊 Voz" : "🔇 Voz"}</button>
               <button type="button" onClick={() => onMusic(!musicOn)} className="rounded-full bg-surface/70 px-3 py-1.5 hover:text-primary">{musicOn ? "🎵 Música" : "🔇 Música"}</button>
               <button type="button" onClick={() => finish("lab")} className="rounded-full bg-surface/70 px-3 py-1.5 hover:text-coral">Pular</button>
             </div>

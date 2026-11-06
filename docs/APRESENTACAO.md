@@ -6,7 +6,7 @@ resultado, então o ensaio vira a apresentação.
 
 | Tempo | Bloco | Quem | O que mostrar |
 |---|---|---|---|
-| 0:00 – 1:05 | **Abertura (tutorial)** | Pessoa 1 | Abra o app (ou clique em **?** no topo). Toque em *Começar* com música; deixe as 7 cenas rodarem (~1 min). Narração em voz é opcional — se alguém for falar por cima, desligue a voz. |
+| 0:00 – 1:05 | **Abertura (tutorial)** | Pessoa 1 | Abra o app (ou clique em **?** no topo). Toque em *Começar* com música; deixe as 7 cenas rodarem (~1 min). Com a narração ligada, cada cena só avança quando a voz termina. Para voz masculina, use o **Microsoft Edge** no Windows (voz *Antonio*); escolha a voz na tela "Olá!" e clique em *Ouvir* para testar. |
 | 1:05 – 2:15 | **Construir** | Pessoa 2 | Modo *Laboratório* → *Falcon 9*. Mostre motor, combustível e material. Clique num **?** (ex.: *Δv*) para mostrar que tudo é explicado. Troque o 1º estágio para *Metano* e veja os números mudarem. |
 | 2:15 – 3:15 | **Lançar** | Pessoa 2 | *Lançar* em **tela cheia**: céu escurecendo, Max-Q, separação, coifa, Terra. Use 10×/50× para não gastar tempo. Depois, escolha *Estabilidade: Nenhuma* e lance de novo: o foguete se parte na Max-Q (falha que vira aula). |
 | 3:15 – 4:00 | **Fazer as contas** | Pessoa 3 | Aba *Finanças*: custo por voo, preço por kg comparado com Falcon 9/Electron, e o plano de negócio (investidores × governo × empréstimo). Mostre como **reutilizar o 1º estágio** derruba o custo. |
@@ -16,6 +16,7 @@ resultado, então o ensaio vira a apresentação.
 
 ## Dicas
 
+- **Passo a passo:** a barra no topo mostra o próximo passo e marca o que já foi feito; clique num passo para ir direto a ele. Use *Recomeçar* depois do ensaio.
 - **Antes de apresentar:** abra o app uma vez para carregar tudo; teste o som da sala; deixe o tutorial pronto (botão **?** no topo).
 - **Se faltar tempo:** pule a segunda falha (bloco *Lançar*) e o chat (bloco *IA*) — o resto continua coerente.
 - **Se a internet cair:** construtor, lançamento, finanças, empresa, globo e música funcionam sem internet depois que a página carregou. Só o chat com IA precisa de conexão.

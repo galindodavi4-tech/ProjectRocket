@@ -30,6 +30,7 @@ export function designToModel(design: RocketDesign, analysis: DesignAnalysis): R
             }
           : null,
       stability: design.stability,
+      reusable: design.reuse !== "none",
     },
   };
 }

@@ -4,10 +4,7 @@ import { Html, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdditiveBlending, CanvasTexture, SRGBColorSpace, type Group } from "three";
-import { feature } from "topojson-client";
-import type { Feature, FeatureCollection, MultiPolygon, Polygon } from "geojson";
-import type { GeometryCollection, Topology } from "topojson-specification";
-import world from "world-atlas/countries-110m.json";
+import { drawShape, shapes, type Shape } from "@/lib/worldShapes";
 import { COUNTRIES, type Country, type CountryId } from "@/lib/countries";
 
 const W = 2048;
@@ -15,37 +12,9 @@ const H = 1024;
 const R = 1.6;
 const COLORS = { ocean: "#0a2a35", land: "#24474d", available: "#2b7a72", selected: "#2ee6d6", border: "#0b1f26" };
 
-type Shape = Feature<Polygon | MultiPolygon, { name: string }> & { id?: string | number };
-
-const shapes: Shape[] = (() => {
-  const topo = world as unknown as Topology<{ countries: GeometryCollection<{ name: string }> }>;
-  return (feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { name: string }>).features as Shape[];
-})();
-
+const draw = (ctx: CanvasRenderingContext2D, s: Shape) => drawShape(ctx, s, W, H);
 const toX = (lon: number) => ((lon + 180) / 360) * W;
 const toY = (lat: number) => ((90 - lat) / 180) * H;
-
-/** Desenha os anéis "desdobrando" a longitude, e repete deslocado para cobrir a emenda de ±180°. */
-function drawShape(ctx: CanvasRenderingContext2D, shape: Shape) {
-  const polys = shape.geometry.type === "Polygon" ? [shape.geometry.coordinates] : shape.geometry.coordinates;
-  ctx.beginPath();
-  for (const poly of polys) {
-    for (const ring of poly) {
-      let prev = ring[0][0];
-      let offset = 0;
-      const pts = ring.map(([lon, lat]) => {
-        if (lon - prev > 180) offset -= 360;
-        else if (prev - lon > 180) offset += 360;
-        prev = lon;
-        return [lon + offset, lat];
-      });
-      for (const shift of [-360, 0, 360]) {
-        pts.forEach(([lon, lat], i) => (i === 0 ? ctx.moveTo(toX(lon + shift), toY(lat)) : ctx.lineTo(toX(lon + shift), toY(lat))));
-        ctx.closePath();
-      }
-    }
-  }
-}
 
 const isoToCountry = new Map(COUNTRIES.map((c) => [c.iso, c]));
 
@@ -65,7 +34,7 @@ function useMaps(selected: CountryId | null) {
       if (!country) return;
       const index = COUNTRIES.indexOf(country) + 1;
       ctx.fillStyle = `rgb(${index * 20},0,0)`;
-      drawShape(ctx, s);
+      draw(ctx, s);
       ctx.fill();
     });
     return ctx;
@@ -99,7 +68,7 @@ function useMaps(selected: CountryId | null) {
     shapes.forEach((s) => {
       const country = isoToCountry.get(String(s.id));
       ctx.fillStyle = country ? (country.id === selected ? COLORS.selected : COLORS.available) : COLORS.land;
-      drawShape(ctx, s);
+      draw(ctx, s);
       ctx.fill();
       ctx.stroke();
     });

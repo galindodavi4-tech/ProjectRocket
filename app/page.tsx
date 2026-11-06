@@ -8,6 +8,7 @@ import { CompanyPanel } from "@/components/company/CompanyPanel";
 import { CompanySetup } from "@/components/company/CompanySetup";
 import { useCompany } from "@/components/company/useCompany";
 import { FlightHud } from "@/components/flight/FlightHud";
+import { GuideBar, useGuide, type GuideStep } from "@/components/GuideBar";
 import { toFlightView } from "@/components/flight/flightView";
 import { useFlight } from "@/components/flight/useFlight";
 import { Onboarding } from "@/components/onboarding/Onboarding";
@@ -212,6 +213,39 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flight.status]);
 
+  // Passo a passo: marca sozinho o que a pessoa já fez.
+  const guide = useGuide();
+  const { mark } = guide;
+  useEffect(() => {
+    if (flight.status === "done") mark("launch");
+  }, [flight.status, mark]);
+  useEffect(() => {
+    if (tab === "money") mark("money");
+  }, [tab, mark]);
+  useEffect(() => {
+    if (company) mark("company");
+    if (company && company.successes > 0) mark("mission");
+  }, [company, mark]);
+  useEffect(() => {
+    if (agent.messages.length > 0) mark("ask");
+  }, [agent.messages.length, mark]);
+
+  const goToStep = (step: GuideStep) => {
+    if (step === "pick") {
+      setMode("lab");
+      setTab("build");
+    } else if (step === "launch") launch();
+    else if (step === "money") {
+      setMode("lab");
+      setTab("money");
+    } else if (step === "company" || step === "mission") setMode("company");
+    else {
+      const input = document.getElementById("prompt");
+      input?.scrollIntoView({ behavior: "smooth", block: "center" });
+      input?.focus();
+    }
+  };
+
   const designModel = useMemo(() => designToModel(design, analysis), [design, analysis]);
   const model = chatRocket ?? designModel;
   const flightView = toFlightView(flight, model.stageCount);
@@ -298,6 +332,8 @@ export default function Home() {
           </IconButton>
         </nav>
       </header>
+
+      <GuideBar done={guide.done} onGo={goToStep} onReset={guide.reset} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[340px_minmax(0,1fr)_400px]">
         <div className="order-3 min-w-0 lg:col-span-2 xl:order-1 xl:col-span-1">
@@ -423,7 +459,7 @@ export default function Home() {
                 </div>
               ))}
             {tab === "build" && (
-              <BuilderPanel design={design} analysis={analysis} onChange={changeDesign} saved={saved} onSave={save} onRemoveSaved={remove} />
+              <BuilderPanel design={design} analysis={analysis} onChange={(d) => { mark("pick"); changeDesign(d); }} saved={saved} onSave={save} onRemoveSaved={remove} />
             )}
             {tab === "perf" && <PerformancePanel design={design} analysis={analysis} />}
             {tab === "money" && (

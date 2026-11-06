@@ -14,7 +14,8 @@ Feito a partir do PRD *Space AI Agent*, com o design system “Turquesa”.
 - **Missão**: simulação da subida segundo a segundo, com animação 3D, tela cheia, controle de velocidade (1×, 10×, 50×), trajetória, gráficos e linha do tempo.
 - **Agente**: "troque para metano", "deixe mais barato por kg", "lance o foguete", "o que minha empresa deve fazer?" — ele muda o projeto e explica com os números do app.
 - **Empresa** (modo 🏢): comece com US$ 100 milhões, dê um nome, escolha o país num **globo 3D** (10 países com base de lançamento real), desenvolva foguetes, faça contatos, aceite investidores, contratos do governo ou empréstimos, cumpra missões pagas (com incentivo do país), abra capital (IPO) e tente chegar a US$ 1 bilhão sem falir.
-- **Tutorial animado** de ~1 minuto na primeira visita (botão **?** no topo para rever), com narração opcional e **música** ambiente gerada ao vivo (botão 🎵).
+- **Tutorial animado** de ~1 minuto na primeira visita (botão **?** no topo para rever), com narração sincronizada (cada cena espera a voz terminar; prefere voz masculina em português) e **música** ambiente gerada ao vivo (botão 🎵).
+- **Passo a passo** no topo: mostra o próximo passo, marca o que já foi feito e leva direto a cada parte.
 - **Botões ?** ao lado de cada termo explicam tudo em linguagem simples.
 
 Roteiro para apresentar em 6–7 minutos: [`docs/APRESENTACAO.md`](docs/APRESENTACAO.md).

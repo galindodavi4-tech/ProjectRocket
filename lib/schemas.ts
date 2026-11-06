@@ -99,6 +99,8 @@ export type RocketGeometry = {
   stages: { lengthM: number; engineCount: number; propellant: PropellantId; vacuumEngine: boolean }[];
   boosters: { count: number; lengthM: number; diameterM: number } | null;
   stability: "fins" | "gimbal" | "none";
+  /** 1º estágio volta para pousar: ganha pernas de pouso e aletas de grade. */
+  reusable?: boolean;
 };
 
 /** O que o visualizador 3D precisa para desenhar o foguete. */

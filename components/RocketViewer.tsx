@@ -3,7 +3,11 @@
 import { Html, OrbitControls, Stars } from "@react-three/drei";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ComponentRef } from "react";
-import { AdditiveBlending, Color, type Group, type Mesh, type MeshBasicMaterial, type MeshStandardMaterial } from "three";
+import {
+  AdditiveBlending, CanvasTexture, Color, DoubleSide, Shape as ThreeShape, SRGBColorSpace, Vector2,
+  type Group, type InstancedMesh, type Mesh, type MeshBasicMaterial, type MeshStandardMaterial, type Texture, Object3D,
+} from "three";
+import { earthCanvas } from "@/lib/worldShapes";
 import { partIds } from "@/lib/parts";
 import { defaultGeometry, FLAME_COLORS } from "@/lib/rocketModel";
 import type { Part, RocketGeometry, RocketModel } from "@/lib/schemas";
@@ -12,7 +16,7 @@ const COLORS = {
   hull: "#d9efec",
   hullUpper: "#eef8f6",
   band: "#123a40",
-  engine: "#58787c",
+  engine: "#3d4b4e",
   nose: "#2ee6d6",
   fin: "#14b8a6",
   booster: "#f2f4f3",
@@ -25,6 +29,127 @@ const COLORS = {
 const SCENE_HEIGHT = 7;
 const SPACE = new Color("#04121a");
 const SKY = new Color("#5fa8cf");
+
+/* ---------- formas e pinturas (com cache: não refaz a cada quadro) ---------- */
+
+const cache = new Map<string, unknown>();
+function cached<T>(key: string, make: () => T): T {
+  if (!cache.has(key)) cache.set(key, make());
+  return cache.get(key) as T;
+}
+
+/** Perfil do sino do motor: garganta estreita em cima, abrindo em curva até a boca. */
+const bellPoints = (r: number, h: number) =>
+  cached(`bell:${r.toFixed(4)}:${h.toFixed(4)}`, () => {
+    const pts: Vector2[] = [];
+    const throat = r * 0.32;
+    pts.push(new Vector2(throat * 1.25, h * 1.12), new Vector2(throat * 1.25, h * 1.02), new Vector2(throat, h * 0.96));
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      pts.push(new Vector2(throat + (r - throat) * Math.pow(t, 0.62), h * 0.96 * (1 - t)));
+    }
+    return pts;
+  });
+
+/** Ogiva da coifa: lados que se curvam até a ponta. */
+const ogivePoints = (r: number, h: number) =>
+  cached(`ogive:${r.toFixed(4)}:${h.toFixed(4)}`, () => {
+    const pts: Vector2[] = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      pts.push(new Vector2(Math.max(0.0001, r * Math.pow(Math.cos((t * Math.PI) / 2), 0.7)), t * h));
+    }
+    return pts;
+  });
+
+/** Aleta enflechada (trapézio), no plano radial. */
+const finShape = (root: number, span: number) =>
+  cached(`fin:${root.toFixed(4)}:${span.toFixed(4)}`, () => {
+    const s = new ThreeShape();
+    s.moveTo(0, 0);
+    s.lineTo(0, root);
+    s.lineTo(span, root * 0.28);
+    s.lineTo(span, -root * 0.12);
+    s.closePath();
+    return s;
+  });
+
+/** Pintura do casco: nome do foguete na vertical, faixas e o padrão xadrez clássico. */
+function hullTexture(name: string, stage: number) {
+  return cached(`hull:${name}:${stage}`, () => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 1024;
+    const ctx = c.getContext("2d")!;
+    ctx.fillStyle = "#eef6f4";
+    ctx.fillRect(0, 0, 512, 1024);
+    // Leve variação de painéis.
+    ctx.strokeStyle = "rgba(14,48,56,0.08)";
+    for (let y = 0; y < 1024; y += 96) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(512, y);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#123a40";
+    ctx.fillRect(0, 980, 512, 44);
+    if (stage === 0) {
+      // Faixa turquesa e xadrez preto e branco perto do topo.
+      ctx.fillStyle = "#2ee6d6";
+      ctx.fillRect(0, 70, 512, 22);
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = i % 2 ? "#0e3038" : "#eef6f4";
+        ctx.fillRect(i * 128, 0, 128, 60);
+      }
+      // Nome na vertical, dos dois lados.
+      const label = name.toUpperCase().slice(0, 18);
+      for (const u of [128, 384]) {
+        ctx.save();
+        ctx.translate(u, 560);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = "#0e3038";
+        const size = Math.min(92, 1400 / Math.max(6, label.length));
+        ctx.font = `700 ${size}px Poppins, system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(label, 0, 0);
+        ctx.restore();
+      }
+    } else {
+      ctx.fillStyle = "#2ee6d6";
+      ctx.fillRect(0, 40, 512, 16);
+      ctx.fillStyle = "#0e3038";
+      ctx.font = "700 72px Poppins, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(String(stage + 1), 128, 520);
+      ctx.fillText(String(stage + 1), 384, 520);
+    }
+    const t = new CanvasTexture(c);
+    t.colorSpace = SRGBColorSpace;
+    t.anisotropy = 8;
+    return t;
+  });
+}
+
+/** Grade das aletas de grade (grid fins): linhas com furos transparentes. */
+function gridTexture() {
+  return cached("grid", () => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const ctx = c.getContext("2d")!;
+    ctx.strokeStyle = "#cfd8d6";
+    ctx.lineWidth = 6;
+    for (let i = 0; i <= 64; i += 16) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 64);
+      ctx.moveTo(0, i);
+      ctx.lineTo(64, i);
+      ctx.stroke();
+    }
+    return new CanvasTexture(c);
+  });
+}
 
 export type FlightView = {
   altKm: number;
@@ -87,10 +212,13 @@ type MeshProps = {
   children: React.ReactNode;
   position?: [number, number, number];
   rotation?: [number, number, number];
+  map?: Texture;
+  doubleSide?: boolean;
+  roughness?: number;
 };
 
 /** Uma malha do foguete. Peça reprovada fica vermelha e pulsa (emissivo). */
-function PartMesh({ part, hovered, onHover, baseColor, ghost, metal = 0.55, children, position, rotation }: MeshProps) {
+function PartMesh({ part, hovered, onHover, baseColor, ghost, metal = 0.55, children, position, rotation, map, doubleSide, roughness = 0.38 }: MeshProps) {
   const mat = useRef<MeshStandardMaterial>(null);
   const failed = part?.status === "fail";
   useFrame(({ clock }) => {
@@ -111,11 +239,13 @@ function PartMesh({ part, hovered, onHover, baseColor, ghost, metal = 0.55, chil
       {children}
       <meshStandardMaterial
         ref={mat}
-        color={failed ? COLORS.fail : hovered ? COLORS.hover : baseColor}
+        color={failed ? COLORS.fail : hovered ? COLORS.hover : map ? "#ffffff" : baseColor}
+        map={ghost ? undefined : map}
+        side={doubleSide ? DoubleSide : undefined}
         emissive={failed ? "#ff2236" : hovered ? "#0f8f86" : "#000000"}
         emissiveIntensity={failed ? 0.6 : 0.35}
         metalness={metal}
-        roughness={0.38}
+        roughness={roughness}
         transparent={ghost}
         opacity={ghost ? 0.35 : 1}
         wireframe={ghost}
@@ -145,6 +275,33 @@ function Flame({ radius, length, colors, x, z, y }: { radius: number; length: nu
         <meshBasicMaterial color={colors.core} transparent opacity={0.9} blending={AdditiveBlending} depthWrite={false} />
       </mesh>
     </group>
+  );
+}
+
+/** Rastro de fumaça abaixo do foguete enquanto ainda há ar (some com a altitude). */
+function Trail({ y, width, thin }: { y: number; width: number; thin: number }) {
+  const ref = useRef<InstancedMesh>(null);
+  const COUNT = 36;
+  const dummy = useMemo(() => new Object3D(), []);
+  const seeds = useMemo(() => Array.from({ length: COUNT }, (_, i) => ({ off: i / COUNT, x: (Math.random() - 0.5) * 0.6, z: (Math.random() - 0.5) * 0.6 })), []);
+  useFrame(({ clock }) => {
+    const m = ref.current;
+    if (!m) return;
+    seeds.forEach((s, i) => {
+      const age = (clock.elapsedTime * 0.9 + s.off) % 1;
+      const scale = width * (0.5 + age * 2.2) * (1 - thin * 0.7);
+      dummy.position.set(s.x * width * (1 + age * 3), y - age * width * 14, s.z * width * (1 + age * 3));
+      dummy.scale.setScalar(scale * (1 - age * 0.35));
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, COUNT]}>
+      <sphereGeometry args={[1, 10, 8]} />
+      <meshStandardMaterial color="#e9eef0" transparent opacity={0.22 * (1 - thin)} depthWrite={false} roughness={1} />
+    </instancedMesh>
   );
 }
 
@@ -186,16 +343,17 @@ function Assembly({ model, geo, spread, hover, onHover, flight }: AssemblyProps)
     spots.forEach(([bx, bz], b) =>
       pieces.push(
         <PartMesh key={`${enginesId}-${b}`} part={byId.get(enginesId)} hovered={isHovered(enginesId)} onHover={onHover} baseColor={COLORS.engine}
-          position={[bx, y + bellH / 2, bz]}>
-          <cylinderGeometry args={[bellR * 0.45, bellR, bellH, 18, 1, true]} />
+          position={[bx, y, bz]} metal={0.85} roughness={0.3} doubleSide>
+          <latheGeometry args={[bellPoints(bellR, bellH), 28]} />
         </PartMesh>,
       ),
     );
     const tankH = s.length - bellH;
     pieces.push(
       <PartMesh key={tankId} part={byId.get(tankId)} hovered={isHovered(tankId)} onHover={onHover}
-        baseColor={s.index === 0 ? COLORS.hull : COLORS.hullUpper} position={[0, y + bellH + gap + tankH / 2, 0]}>
-        <cylinderGeometry args={[L.r, L.r, tankH, 40]} />
+        baseColor={s.index === 0 ? COLORS.hull : COLORS.hullUpper} position={[0, y + bellH + gap + tankH / 2, 0]}
+        map={hullTexture(model.name, s.index)} metal={0.25} roughness={0.5}>
+        <cylinderGeometry args={[L.r, L.r, tankH, 48]} />
       </PartMesh>,
     );
     // Faixa escura no topo de cada estágio (interestágio).
@@ -209,12 +367,44 @@ function Assembly({ model, geo, spread, hover, onHover, flight }: AssemblyProps)
     if (s.index === 0 && showFins && firstStage === 0) {
       for (let f = 0; f < 4; f++) {
         const a = (f / 4) * Math.PI * 2 + Math.PI / 4;
-        const dist = L.r * 1.55 + gap * 0.5;
+        const dist = L.r * 0.98 + gap * 0.5;
+        const thick = L.r * 0.07;
         pieces.push(
-          <PartMesh key={`fin-${f}`} part={finsPart} hovered={isHovered(partIds.fins)} onHover={onHover} baseColor={COLORS.fin}
-            ghost={geo.stability !== "fins"} position={[Math.cos(a) * dist, y + bellH + L.r * 1.1, Math.sin(a) * dist]} rotation={[0, -a, 0]}>
-            <boxGeometry args={[L.r * 1.1, L.r * 2.2, L.r * 0.08]} />
-          </PartMesh>,
+          <group key={`fin-${f}`} position={[Math.cos(a) * dist, y + bellH * 0.4, Math.sin(a) * dist]} rotation={[0, -a, 0]}>
+            <PartMesh part={finsPart} hovered={isHovered(partIds.fins)} onHover={onHover} baseColor={COLORS.fin}
+              ghost={geo.stability !== "fins"} position={[0, 0, -thick / 2]} metal={0.4}>
+              <extrudeGeometry args={[finShape(L.r * 2.4, L.r * 1.15), { depth: thick, bevelEnabled: false }]} />
+            </PartMesh>
+          </group>,
+        );
+      }
+    }
+    // 1º estágio reutilizável: pernas de pouso dobradas e aletas de grade no topo.
+    if (s.index === 0 && geo.reusable && firstStage === 0) {
+      const legLen = Math.min(s.length * 0.28, L.r * 5);
+      for (let l = 0; l < 4; l++) {
+        const a = (l / 4) * Math.PI * 2;
+        pieces.push(
+          <group key={`leg-${l}`} position={[Math.cos(a) * L.r * 1.03, y + bellH * 0.2, Math.sin(a) * L.r * 1.03]} rotation={[0, -a, 0]}>
+            <mesh position={[0, legLen / 2, 0]} rotation={[0, 0, -0.06]}>
+              <boxGeometry args={[L.r * 0.12, legLen, L.r * 0.22]} />
+              <meshStandardMaterial color="#1e2b2e" metalness={0.6} roughness={0.45} />
+            </mesh>
+            <mesh position={[L.r * 0.04, -L.r * 0.02, 0]}>
+              <cylinderGeometry args={[L.r * 0.14, L.r * 0.16, L.r * 0.05, 12]} />
+              <meshStandardMaterial color="#1e2b2e" metalness={0.6} roughness={0.45} />
+            </mesh>
+          </group>,
+        );
+      }
+      const top = y + s.length - L.r * 0.9;
+      for (let g = 0; g < 4; g++) {
+        const a = (g / 4) * Math.PI * 2 + Math.PI / 4;
+        pieces.push(
+          <mesh key={`grid-${g}`} position={[Math.cos(a) * L.r * 1.32, top, Math.sin(a) * L.r * 1.32]} rotation={[0, -a + Math.PI / 2, 0]}>
+            <boxGeometry args={[L.r * 0.6, L.r * 0.6, L.r * 0.05]} />
+            <meshStandardMaterial map={gridTexture()} alphaTest={0.5} transparent color="#c9d3d1" metalness={0.7} roughness={0.35} side={DoubleSide} />
+          </mesh>,
         );
       }
     }
@@ -259,8 +449,8 @@ function Assembly({ model, geo, spread, hover, onHover, flight }: AssemblyProps)
       <PartMesh part={byId.get(partIds.nose)} hovered={isHovered(partIds.nose)} onHover={onHover} baseColor={COLORS.hullUpper} position={[0, noseY + cylH / 2, 0]}>
         <cylinderGeometry args={[L.r, L.r, cylH, 40]} />
       </PartMesh>
-      <PartMesh part={byId.get(partIds.nose)} hovered={isHovered(partIds.nose)} onHover={onHover} baseColor={COLORS.nose} position={[0, noseY + cylH + coneH / 2, 0]}>
-        <coneGeometry args={[L.r, coneH, 40]} />
+      <PartMesh part={byId.get(partIds.nose)} hovered={isHovered(partIds.nose)} onHover={onHover} baseColor={COLORS.nose} position={[0, noseY + cylH, 0]} metal={0.35} roughness={0.3}>
+        <latheGeometry args={[ogivePoints(L.r, coneH), 48]} />
       </PartMesh>
     </group>
   ) : (
@@ -291,6 +481,7 @@ function Assembly({ model, geo, spread, hover, onHover, flight }: AssemblyProps)
       {boosterNodes}
       {nose}
       {flames}
+      {flight?.burning && flight.altKm > 0.3 && flight.altKm < 45 && <Trail y={flameY - L.r * 2.5} width={L.r * 1.2} thin={flight.altKm / 45} />}
       {flight?.burning && <pointLight position={[0, flameY - L.r * 2, 0]} intensity={60} distance={12} color={flameStage ? FLAME_COLORS[flameStage.propellant].outer : "#ff8a3d"} />}
     </group>
   );
@@ -368,18 +559,98 @@ function Explosion() {
   );
 }
 
-/** Céu que escurece com a altitude, chão que se afasta, nuvens e a Terra lá embaixo. */
-function Environment({ flight, rocketBottom }: { flight: FlightView | null; rocketBottom: number }) {
+/** Torre de lançamento treliçada, com braço de serviço apontando para o foguete. */
+function LaunchTower({ x, height, armTo }: { x: number; height: number; armTo: number }) {
+  const w = 0.55;
+  const rungs = Math.floor(height / 0.45);
+  const red = "#b8452f";
+  const legs: [number, number][] = [[-w / 2, -w / 2], [w / 2, -w / 2], [-w / 2, w / 2], [w / 2, w / 2]];
+  return (
+    <group position={[x, 0, 0]}>
+      {legs.map(([lx, lz], i) => (
+        <mesh key={`l${i}`} position={[lx, height / 2, lz]}>
+          <boxGeometry args={[0.05, height, 0.05]} />
+          <meshStandardMaterial color={red} metalness={0.5} roughness={0.5} />
+        </mesh>
+      ))}
+      {Array.from({ length: rungs }, (_, i) => {
+        const y = (i + 1) * 0.45;
+        return (
+          <group key={`r${i}`} position={[0, y, 0]}>
+            <mesh position={[0, 0, -w / 2]}><boxGeometry args={[w, 0.03, 0.03]} /><meshStandardMaterial color={red} metalness={0.5} roughness={0.5} /></mesh>
+            <mesh position={[0, 0, w / 2]}><boxGeometry args={[w, 0.03, 0.03]} /><meshStandardMaterial color={red} metalness={0.5} roughness={0.5} /></mesh>
+            <mesh position={[-w / 2, 0, 0]}><boxGeometry args={[0.03, 0.03, w]} /><meshStandardMaterial color={red} metalness={0.5} roughness={0.5} /></mesh>
+            <mesh position={[w / 2, 0, 0]}><boxGeometry args={[0.03, 0.03, w]} /><meshStandardMaterial color={red} metalness={0.5} roughness={0.5} /></mesh>
+            {/* Diagonais em X, como numa treliça de verdade. */}
+            <mesh position={[0, -0.22, -w / 2]} rotation={[0, 0, (i % 2 ? 1 : -1) * Math.atan2(0.45, w)]}><boxGeometry args={[Math.hypot(w, 0.45), 0.02, 0.02]} /><meshStandardMaterial color={red} metalness={0.5} roughness={0.5} /></mesh>
+            <mesh position={[0, -0.22, w / 2]} rotation={[0, 0, (i % 2 ? -1 : 1) * Math.atan2(0.45, w)]}><boxGeometry args={[Math.hypot(w, 0.45), 0.02, 0.02]} /><meshStandardMaterial color={red} metalness={0.5} roughness={0.5} /></mesh>
+          </group>
+        );
+      })}
+      {/* Braço de serviço e luz de aviso no topo. */}
+      <mesh position={[(armTo - x) / 2 + w / 4, height * 0.82, 0]}>
+        <boxGeometry args={[Math.abs(armTo - x) - w / 2, 0.08, 0.16]} />
+        <meshStandardMaterial color="#5d6f70" metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, height + 0.08, 0]}>
+        <sphereGeometry args={[0.07, 12, 12]} />
+        <meshBasicMaterial color="#ff4d5e" />
+      </mesh>
+    </group>
+  );
+}
+
+/** Nuvem de fumaça e vapor que se espalha pelo chão na decolagem. */
+function PadSmoke({ active }: { active: boolean }) {
+  const ref = useRef<InstancedMesh>(null);
+  const COUNT = 70;
+  const dummy = useMemo(() => new Object3D(), []);
+  const seeds = useMemo(() => Array.from({ length: COUNT }, (_, i) => ({ a: (i / COUNT) * Math.PI * 2 + Math.random() * 0.4, off: Math.random(), speed: 0.7 + Math.random() * 0.8 })), []);
+  const start = useRef<number | null>(null);
+  useFrame(({ clock }) => {
+    const m = ref.current;
+    if (!m) return;
+    if (active && start.current === null) start.current = clock.elapsedTime;
+    if (!active) start.current = null;
+    const t = start.current === null ? 0 : clock.elapsedTime - start.current;
+    seeds.forEach((s, i) => {
+      // Cresce nos primeiros segundos e depois fica pairando, devagar.
+      const grow = Math.min(1, t / 6);
+      const age = ((t * 0.08 * s.speed + s.off) % 1) * grow;
+      const dist = 0.6 + age * 6;
+      dummy.position.set(Math.cos(s.a) * dist, 0.25 + age * 1.6, Math.sin(s.a) * dist);
+      dummy.scale.setScalar(active ? (0.35 + age * 1.6) * grow : 0.0001);
+      dummy.updateMatrix();
+      m.setMatrixAt(i, dummy.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, COUNT]}>
+      <sphereGeometry args={[1, 12, 10]} />
+      <meshStandardMaterial color="#f1f4f4" transparent opacity={0.5} depthWrite={false} roughness={1} />
+    </instancedMesh>
+  );
+}
+
+/** Céu que escurece com a altitude, base de lançamento, nuvens e a Terra com continentes lá embaixo. */
+function Environment({ flight, rocketBottom, rocketR }: { flight: FlightView | null; rocketBottom: number; rocketR: number }) {
   const { scene } = useThree();
   const earth = useRef<Group>(null);
+  const earthSpin = useRef<Mesh>(null);
   const ground = useRef<Group>(null);
   const clouds = useRef<Group>(null);
+  const earthMap = useMemo(() => {
+    const t = new CanvasTexture(earthCanvas());
+    t.colorSpace = SRGBColorSpace;
+    return t;
+  }, []);
   const cloudSeeds = useMemo(
     () => Array.from({ length: 16 }, (_, i) => ({ h: 1.5 + (i % 8) * 0.9, x: Math.sin(i * 7.1) * 7, z: -3 - (i % 5) * 2.2, s: 1 + (i % 3) * 0.7 })),
     [],
   );
 
-  useFrame(() => {
+  useFrame((_, dt) => {
     const alt = flight?.altKm ?? 0;
     if (!scene.background || !(scene.background instanceof Color)) scene.background = new Color();
     const bg = scene.background as Color;
@@ -404,25 +675,39 @@ function Environment({ flight, rocketBottom }: { flight: FlightView | null; rock
       earth.current.visible = !!flight && alt > 12;
       earth.current.position.set(0, -92 - 6 * a, -75);
     }
+    if (earthSpin.current) earthSpin.current.rotation.y += dt * 0.004;
   });
 
+  const padLights: [number, number][] = [[2.6, 1.6], [-1.2, 2.8], [1.4, -2.7]];
   return (
     <>
       <group ref={ground}>
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[60, 64]} />
-          <meshStandardMaterial color={flight ? "#2c4a3a" : "#0e3038"} metalness={0.1} roughness={0.9} />
+          <meshStandardMaterial color={flight ? "#2f4d3b" : "#0b2a31"} metalness={0.1} roughness={0.95} />
+        </mesh>
+        {/* Plataforma hexagonal de concreto e a vala das chamas. */}
+        <mesh position={[0, 0.07, 0]} receiveShadow>
+          <cylinderGeometry args={[2.3, 2.45, 0.14, 6]} />
+          <meshStandardMaterial color="#6b7b7c" metalness={0.15} roughness={0.85} />
+        </mesh>
+        <mesh position={[0, 0.145, 0]}>
+          <boxGeometry args={[rocketR * 2.6, 0.01, 3.6]} />
+          <meshStandardMaterial color="#1b2426" roughness={1} />
         </mesh>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-          <circleGeometry args={[2.4, 48]} />
-          <meshStandardMaterial color="#5d6f70" metalness={0.3} roughness={0.7} />
+          <ringGeometry args={[2.9, 3.0, 64]} />
+          <meshBasicMaterial color="#2ee6d6" transparent opacity={flight ? 0 : 0.5} />
         </mesh>
-        {flight && (
-          <mesh position={[2.6, SCENE_HEIGHT * 0.55, 0]}>
-            <boxGeometry args={[0.35, SCENE_HEIGHT * 1.1, 0.35]} />
-            <meshStandardMaterial color="#8a2a22" metalness={0.4} roughness={0.6} wireframe />
-          </mesh>
-        )}
+        <LaunchTower x={-(rocketR + 1.25)} height={SCENE_HEIGHT * 1.02} armTo={-rocketR * 1.05} />
+        {/* Para-raios em volta da plataforma. */}
+        {padLights.map(([lx, lz], i) => (
+          <group key={i} position={[lx, 0, lz]}>
+            <mesh position={[0, 2.2, 0]}><cylinderGeometry args={[0.03, 0.05, 4.4, 8]} /><meshStandardMaterial color="#8a9a9b" metalness={0.6} roughness={0.4} /></mesh>
+            <mesh position={[0, 4.45, 0]}><sphereGeometry args={[0.05, 8, 8]} /><meshBasicMaterial color="#ff4d5e" /></mesh>
+          </group>
+        ))}
+        <PadSmoke active={!!flight && (flight.burning || flight.altKm > 0.05)} />
       </group>
       <group ref={clouds}>
         {cloudSeeds.map((c, i) => (
@@ -433,13 +718,14 @@ function Environment({ flight, rocketBottom }: { flight: FlightView | null; rock
         ))}
       </group>
       <group ref={earth}>
-        <mesh>
-          <sphereGeometry args={[90, 96, 64]} />
-          <meshStandardMaterial color="#1d5f8f" emissive="#0a2f4a" emissiveIntensity={0.6} roughness={0.8} />
+        {/* Inclinada para o Equador ficar de frente, começando pelo Atlântico e a América do Sul. */}
+        <mesh ref={earthSpin} rotation={[-Math.PI / 2 + 0.3, -0.87, 0]}>
+          <sphereGeometry args={[90, 128, 96]} />
+          <meshStandardMaterial map={earthMap} roughness={0.85} metalness={0.05} emissive="#0a2f4a" emissiveIntensity={0.25} />
         </mesh>
         <mesh scale={1.025}>
           <sphereGeometry args={[90, 96, 64]} />
-          <meshBasicMaterial color="#6fd3ff" transparent opacity={0.18} blending={AdditiveBlending} depthWrite={false} />
+          <meshBasicMaterial color="#6fd3ff" transparent opacity={0.16} blending={AdditiveBlending} depthWrite={false} />
         </mesh>
       </group>
     </>
@@ -534,7 +820,7 @@ export const RocketViewer = forwardRef<RocketViewerHandle, Props>(function Rocke
       <pointLight position={[-4, 2, -3]} intensity={30} color="#2ee6d6" />
       <pointLight position={[3, -3, 4]} intensity={18} color="#ffc29a" />
       {(!flying || (flight?.altKm ?? 0) > 25) && <Stars radius={60} depth={30} count={2200} factor={3} fade speed={0.6} />}
-      <Environment flight={flight} rocketBottom={-SCENE_HEIGHT / 2} />
+      <Environment flight={flight} rocketBottom={-SCENE_HEIGHT / 2} rocketR={L.r} />
       {flight?.exploded ? (
         <Explosion />
       ) : (
